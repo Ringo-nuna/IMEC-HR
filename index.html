@@ -1560,12 +1560,11 @@
     const employeeLeaves = employee => employee ? leaves.filter(item=>
       item.creatorEmail===employee.email || (!item.creatorEmail&&item.creator===employee.name)
     ) : [];
-    const employeeStats = employee => {
-      const year=TODAY.getFullYear();
+    const employeeStats = (employee, year=TODAY.getFullYear()) => {
       const granted=Number(annualLeaveStore[`${year}:${employee.email}`] ?? (employee.id%4===0?17:16));
       const yearLeaves=employeeLeaves(employee).filter(item=>new Date(item.start+"T00:00:00").getFullYear()===year);
-      const used=yearLeaves.filter(item=>isPast(item.start)).reduce((sum,item)=>sum+Number(item.days),0);
-      const scheduled=yearLeaves.filter(item=>!isPast(item.start)).reduce((sum,item)=>sum+Number(item.days),0);
+      const used=yearLeaves.filter(item=>isPast(item.start)||new Date(item.start+"T00:00:00").getFullYear()<TODAY.getFullYear()).reduce((sum,item)=>sum+Number(item.days),0);
+      const scheduled=yearLeaves.filter(item=>!isPast(item.start)&&new Date(item.start+"T00:00:00").getFullYear()>=TODAY.getFullYear()).reduce((sum,item)=>sum+Number(item.days),0);
       return {granted,used,scheduled,committed:used+scheduled,remaining:Math.max(0,granted-used)};
     };
     function applyCurrentUser() {
@@ -1943,10 +1942,11 @@
       if(yf&&!yf.options.length) Array.from({length:7},(_,i)=>TODAY.getFullYear()+3-i).forEach(y=>{const o=document.createElement("option");o.value=y;o.textContent=y+"년";if(y===TODAY.getFullYear())o.selected=true;yf.appendChild(o);});
       const q=document.getElementById("teamSearch").value.trim().toLowerCase(), dept=document.getElementById("deptFilter").value;
       const showRetired = document.getElementById("showRetiredFilter")?.checked;
+      const teamYear=Number(yf?.value||TODAY.getFullYear());
       document.getElementById("teamTable").innerHTML=sortEmployees(employeeDirectory.filter(person=>
         (!q||`${person.name} ${person.dept} ${person.email}`.toLowerCase().includes(q))&&(dept==="all"||person.dept===dept)&&(showRetired||person.status!=="퇴사")
       )).map((person,i)=>{
-        const stats=employeeStats(person);
+        const stats=employeeStats(person,teamYear);
         const usageRate=stats.granted?Math.round(stats.committed/stats.granted*100):0;
         const tripCount=employeeTrips(person).length;
         return `<tr style="cursor:pointer" onclick="showEmployeeAdmin('${person.email}')">
@@ -1964,14 +1964,14 @@
     window.showEmployeeAdmin = email => {
       const person=employeeDirectory.find(p=>p.email===email);
       if(!person||!isAdmin(currentUser)) return;
+      _openAdminEmail = email;
       const profile=profileStore[email]||{};
       const currentYear=Number(document.getElementById("teamYearFilter")?.value||TODAY.getFullYear());
-      const yearOptions=Array.from({length:4},(_,i)=>TODAY.getFullYear()+1-i).map(y=>`<option value="${y}"${y===currentYear?"selected":""}>${y}년</option>`).join("");
       document.getElementById("adminDetail").innerHTML=`
         <h3 style="margin:0 0 4px">${person.name} <span style="font-size:13px;font-weight:400;color:var(--muted)">${person.dept}${person.position?" · "+person.position:""}</span></h3>
         <p style="margin:0 0 16px;font-size:12px;color:var(--muted)">${person.email} · <span class="status ${person.status==="퇴사"?"locked":""}" style="font-size:11px">${person.status||"재직"}</span></p>
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
-          <select id="adminLeaveYear" class="filter-select" style="font-size:13px">${yearOptions}</select>
+          <span style="font-size:13px;color:var(--muted);font-weight:600">${currentYear}년</span>
           <div style="flex:1"></div>
           <button class="secondary" style="font-size:12px" onclick="adminBulkDownloadLeaves('${email}')">↓ 신청서 일괄 다운로드</button>
         </div>
@@ -1980,7 +1980,7 @@
             <h4 style="margin:0">연차 이력</h4>
             <div style="display:flex;gap:8px;align-items:center">
               <label style="font-size:12px;color:var(--muted)">총 부여:</label>
-              <input id="adminGrantDays" type="number" min="0" step=".5" style="width:60px;font-size:12px;padding:4px 8px" value="${employeeStats(person).granted}">
+              <input id="adminGrantDays" type="number" min="0" step=".5" style="width:60px;font-size:12px;padding:4px 8px" value="${employeeStats(person,currentYear).granted}">
               <button class="primary" type="button" onclick="saveAnnualLeaveGrant('${email}')" style="font-size:12px;padding:5px 12px">저장</button>
             </div>
           </div>
@@ -1996,13 +1996,12 @@
           </div>
         </div>
       `;
-      document.getElementById("adminLeaveYear").addEventListener("change",()=>renderAdminEmployeeLeaves(email));
       renderAdminEmployeeLeaves(email);
     };
 
     function renderAdminEmployeeLeaves(email) {
       const person=employeeDirectory.find(p=>p.email===email); if(!person) return;
-      const year=Number(document.getElementById("adminLeaveYear")?.value||TODAY.getFullYear());
+      const year=Number(document.getElementById("teamYearFilter")?.value||TODAY.getFullYear());
       const empLeaves=leaves.filter(l=>(l.creatorEmail===email||(!l.creatorEmail&&l.creator===person.name))&&new Date(l.start+"T00:00:00").getFullYear()===year).sort((a,b)=>b.start.localeCompare(a.start));
       const used=empLeaves.filter(l=>isPast(l.start)).reduce((s,l)=>s+Number(l.days),0);
       const scheduled=empLeaves.filter(l=>!isPast(l.start)).reduce((s,l)=>s+Number(l.days),0);
@@ -2070,7 +2069,7 @@
     };
     window.adminBulkDownloadLeaves = email => {
       const person=employeeDirectory.find(p=>p.email===email); if(!person) return;
-      const year=Number(document.getElementById("adminLeaveYear")?.value||TODAY.getFullYear());
+      const year=Number(document.getElementById("teamYearFilter")?.value||TODAY.getFullYear());
       const empLeaves=leaves.filter(l=>
         (l.creatorEmail===email||(!l.creatorEmail&&l.creator===person.name))&&
         new Date(l.start+"T00:00:00").getFullYear()===year
@@ -2195,8 +2194,9 @@ ${empLeaves.map(l=>makePageBlock(l)).join("\n")}
       const person=employeeDirectory.find(item=>item.email===email);
       const used=person?employeeStats(person).used:0;
       if(value<used) return showLoginError("부여 연차 확인", `총 부여 연차는 현재까지 사용한 연차 ${used.toFixed(1)}일보다 작을 수 없습니다.`);
-      annualLeaveStore[`${TODAY.getFullYear()}:${email}`]=value;
-      sbSaveAnnualLeave(TODAY.getFullYear(),email,value);
+      const saveYear=Number(document.getElementById("teamYearFilter")?.value||TODAY.getFullYear());
+      annualLeaveStore[`${saveYear}:${email}`]=value;
+      sbSaveAnnualLeave(saveYear,email,value);
       renderTeam(); showEmployeeAdmin(email); renderAll();
       showToast(`${TODAY.getFullYear()}년 총 부여 연차를 수정했습니다.`);
     };
@@ -3113,7 +3113,11 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
     document.getElementById("teamSearch").addEventListener("input",renderTeam);
     document.getElementById("deptFilter").addEventListener("change",renderTeam);
     document.getElementById("showRetiredFilter").addEventListener("change",renderTeam);
-    document.getElementById("teamYearFilter").addEventListener("change",renderTeam);
+    let _openAdminEmail = null;
+    document.getElementById("teamYearFilter").addEventListener("change",()=>{
+      renderTeam();
+      if(_openAdminEmail) showEmployeeAdmin(_openAdminEmail);
+    });
     document.getElementById("holidayYearFilter").addEventListener("change",renderHolidayTable);
     document.getElementById("employeeForm").addEventListener("submit",e=>{
       e.preventDefault();
