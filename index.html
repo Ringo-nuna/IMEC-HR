@@ -1744,7 +1744,7 @@
       const filter = document.getElementById("leaveFilter").value;
       const lyf = document.getElementById("leaveYearFilter");
       if(lyf && !lyf.options.length) {
-        Array.from({length:10},(_,i)=>TODAY.getFullYear()+4-i).forEach(y=>{
+        Array.from({length:7},(_,i)=>TODAY.getFullYear()+3-i).forEach(y=>{
           const o=document.createElement("option"); o.value=y; o.textContent=y+"년";
           if(y===TODAY.getFullYear()) o.selected=true;
           lyf.appendChild(o);
@@ -1940,7 +1940,7 @@
     function renderTeam() {
       if(!currentUser||!isAdmin(currentUser)) return;
       const yf=document.getElementById("teamYearFilter");
-      if(yf&&!yf.options.length) Array.from({length:4},(_,i)=>TODAY.getFullYear()-i).forEach(y=>{const o=document.createElement("option");o.value=y;o.textContent=y+"년";yf.appendChild(o);});
+      if(yf&&!yf.options.length) Array.from({length:7},(_,i)=>TODAY.getFullYear()+3-i).forEach(y=>{const o=document.createElement("option");o.value=y;o.textContent=y+"년";if(y===TODAY.getFullYear())o.selected=true;yf.appendChild(o);});
       const q=document.getElementById("teamSearch").value.trim().toLowerCase(), dept=document.getElementById("deptFilter").value;
       const showRetired = document.getElementById("showRetiredFilter")?.checked;
       document.getElementById("teamTable").innerHTML=sortEmployees(employeeDirectory.filter(person=>
@@ -2356,7 +2356,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       // populate year filter
       const yf=document.getElementById("tripYearFilter");
       if(yf&&!yf.options.length) {
-        Array.from({length:10},(_,i)=>TODAY.getFullYear()+4-i).forEach(y=>{
+        Array.from({length:7},(_,i)=>TODAY.getFullYear()+3-i).forEach(y=>{
           const o=document.createElement("option"); o.value=y; o.textContent=y+"년";
           if(y===TODAY.getFullYear()) o.selected=true;
           yf.appendChild(o);
@@ -2448,7 +2448,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
     // ── 관리자 전사 출장 ───────────────────────────────────────────────
     function renderAdminTrips() {
       const yf=document.getElementById("adminTripYearFilter");
-      if(yf&&!yf.options.length) Array.from({length:5},(_,i)=>TODAY.getFullYear()-i).forEach(y=>{const o=document.createElement("option");o.value=y;o.textContent=y+"년";yf.appendChild(o);});
+      if(yf&&!yf.options.length) Array.from({length:7},(_,i)=>TODAY.getFullYear()+3-i).forEach(y=>{const o=document.createElement("option");o.value=y;o.textContent=y+"년";if(y===TODAY.getFullYear())o.selected=true;yf.appendChild(o);});
       const df=document.getElementById("adminTripDeptFilter");
       if(df&&df.options.length<=1) [...new Set(employeeDirectory.map(p=>p.dept))].forEach(d=>{const o=document.createElement("option");o.value=d;o.textContent=d;df.appendChild(o);});
       const year=Number(yf?.value||TODAY.getFullYear());
