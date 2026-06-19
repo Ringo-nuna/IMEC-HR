@@ -761,10 +761,13 @@
 
           <!-- 연차 이력 -->
           <h3 style="margin:22px 0 10px;font-size:14px;color:var(--muted)">연차 이력</h3>
-          <div class="toolbar">
-            <div class="search"><input id="leaveSearch" placeholder="휴가 사유 검색"></div>
+          <div class="toolbar" style="flex-wrap:wrap;gap:7px">
             <select id="leaveYearFilter" class="filter-select"></select>
+            <select id="leaveTypeFilter" class="filter-select"><option value="all">전체 종류</option><option>연차</option><option>오전 반차</option><option>오후 반차</option><option>특별휴가</option><option>무급병가</option><option>유급병가</option><option>건강검진</option><option>건강휴가</option><option>공가</option></select>
+            <select id="leaveMonthFilter" class="filter-select"><option value="all">전체 월</option><option value="1">1월</option><option value="2">2월</option><option value="3">3월</option><option value="4">4월</option><option value="5">5월</option><option value="6">6월</option><option value="7">7월</option><option value="8">8월</option><option value="9">9월</option><option value="10">10월</option><option value="11">11월</option><option value="12">12월</option></select>
+            <div class="search" style="flex:1;min-width:140px"><input id="leaveSearch" placeholder="사유 검색"></div>
             <select id="leaveFilter" class="filter-select"><option value="all">전체 상태</option><option value="upcoming">사용 예정</option><option value="past">사용 완료</option></select>
+            <button class="secondary" style="white-space:nowrap;font-size:12px" onclick="exportMyLeavesExcel()">↓ 엑셀</button>
           </div>
           <article class="card table-card">
             <table>
@@ -786,9 +789,10 @@
             <article class="metric"><span class="metric-label">오늘 출장</span><div class="metric-value" id="myTripTodayMetric">0<small> 건</small></div></article>
           </div>
           <h3 style="margin:22px 0 10px;font-size:14px;color:var(--muted)">출장 이력</h3>
-          <div class="toolbar">
-            <div class="search"><input id="tripSearch" placeholder="국내해외, 출장지, 외근여부, 동행자, Order#, Order 내용 검색"></div>
+          <div class="toolbar" style="flex-wrap:wrap;gap:7px">
             <select id="tripYearFilter" class="filter-select"></select>
+            <div class="search" style="flex:1;min-width:160px"><input id="tripSearch" placeholder="출장지, 동행자, Order# 검색"></div>
+            <button class="secondary" style="white-space:nowrap;font-size:12px" onclick="exportMyTripsExcel()">↓ 엑셀</button>
           </div>
           <article class="card table-card">
             <table>
@@ -1754,6 +1758,8 @@
     function renderLeaveTable() {
       const q = document.getElementById("leaveSearch").value.trim().toLowerCase();
       const filter = document.getElementById("leaveFilter").value;
+      const typeFilter = document.getElementById("leaveTypeFilter").value;
+      const monthFilter = document.getElementById("leaveMonthFilter").value;
       const lyf = document.getElementById("leaveYearFilter");
       if(lyf && !lyf.options.length) {
         Array.from({length:7},(_,i)=>TODAY.getFullYear()+3-i).forEach(y=>{
@@ -1765,9 +1771,11 @@
       const year = Number(lyf?.value || TODAY.getFullYear());
       const rows = employeeLeaves(currentUser).sort((a,b)=>b.start.localeCompare(a.start)).filter(l => {
         const past = isPast(l.start);
-        const leaveYear = new Date(l.start+"T00:00:00").getFullYear();
-        return leaveYear === year &&
-          (!q || `${l.type} ${l.reason}`.toLowerCase().includes(q)) &&
+        const leaveDate = new Date(l.start+"T00:00:00");
+        return leaveDate.getFullYear() === year &&
+          (typeFilter==="all" || l.type === typeFilter) &&
+          (monthFilter==="all" || leaveDate.getMonth()+1 === Number(monthFilter)) &&
+          (!q || (l.reason||"").toLowerCase().includes(q)) &&
           (filter==="all" || (filter==="past" && past) || (filter==="upcoming" && !past));
       });
       document.getElementById("leaveTable").innerHTML = rows.length ? rows.map(l => {
@@ -2600,6 +2608,43 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       a.download = `IMEC_직원관리_${TODAY.getFullYear()}.csv`; a.click();
       showToast("직원 관리 CSV를 다운로드했습니다.");
     };
+    window.exportMyLeavesExcel = () => {
+      if(!currentUser) return;
+      const year = Number(document.getElementById("leaveYearFilter")?.value || TODAY.getFullYear());
+      const typeFilter = document.getElementById("leaveTypeFilter").value;
+      const monthFilter = document.getElementById("leaveMonthFilter").value;
+      const filter = document.getElementById("leaveFilter").value;
+      const q = document.getElementById("leaveSearch").value.trim().toLowerCase();
+      const rows = employeeLeaves(currentUser).sort((a,b)=>b.start.localeCompare(a.start)).filter(l => {
+        const past = isPast(l.start);
+        const d = new Date(l.start+"T00:00:00");
+        return d.getFullYear()===year &&
+          (typeFilter==="all"||l.type===typeFilter) &&
+          (monthFilter==="all"||d.getMonth()+1===Number(monthFilter)) &&
+          (!q||(l.reason||"").toLowerCase().includes(q)) &&
+          (filter==="all"||(filter==="past"&&past)||(filter==="upcoming"&&!past));
+      });
+      const header = ["휴가 종류","시작일","종료일","사용 일수","사유","상태"];
+      const data = rows.map(l => [l.type, l.start, l.end, Number(l.days).toFixed(1)+"일", l.reason||"", isPast(l.start)?"사용 완료":"사용 예정"]);
+      const csv = "﻿" + [header,...data].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+      a.download = `IMEC_${currentUser.name}_연차현황_${year}.csv`; a.click();
+      showToast(`${year}년 연차 현황을 다운로드했습니다.`);
+    };
+    window.exportMyTripsExcel = () => {
+      if(!currentUser) return;
+      const year = Number(document.getElementById("tripYearFilter")?.value || TODAY.getFullYear());
+      const q = (document.getElementById("tripSearch")?.value||"").trim().toLowerCase();
+      const trips = myTripsForYear(year).filter(t=>!q||[t.location||"",t.title||"",t.companions||"",t.orderNumber||"",t.poNumber||""].join(" ").toLowerCase().includes(q));
+      const header = ["국내/해외","출장지","외근여부","시작일","종료일","등록자","동행자","Order NO#","Order 내용","출장 내용","상태"];
+      const data = trips.map(t => [t.tripArea||"국내", t.location||t.title.replace(/ 출장(\(외근\))?$/,""), t.isOutwork?"외근":"", t.date, t.endDate||t.date, t.creatorEmail===currentUser.email?"나":t.creator||"-", t.companions||"", t.orderNumber||"", t.poNumber||"", t.tripDesc||"", isPast(t.endDate||t.date)?"완료":"예정"]);
+      const csv = "﻿" + [header,...data].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+      a.download = `IMEC_${currentUser.name}_출장현황_${year}.csv`; a.click();
+      showToast(`${year}년 출장 현황을 다운로드했습니다.`);
+    };
     window.exportPersonalTrips = (email, year) => {
       const person = employeeDirectory.find(p => p.email === email); if(!person) return;
       const tripsData = events.filter(e => {
@@ -3187,6 +3232,8 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
     document.getElementById("leaveSearch").addEventListener("input",renderLeaveTable);
     document.getElementById("leaveFilter").addEventListener("change",renderLeaveTable);
     document.getElementById("leaveYearFilter").addEventListener("change",renderLeaveTable);
+    document.getElementById("leaveTypeFilter").addEventListener("change",renderLeaveTable);
+    document.getElementById("leaveMonthFilter").addEventListener("change",renderLeaveTable);
     document.getElementById("teamSearch").addEventListener("input",renderTeam);
     document.getElementById("deptFilter").addEventListener("change",renderTeam);
     document.getElementById("showRetiredFilter").addEventListener("change",renderTeam);
