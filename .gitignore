@@ -1,0 +1,11 @@
+dist/
+deploy/
+PW.txt
+work/
+*.env
+*.xlsx
+outputs/.claude/
+outputs/*BACKUP*.html
+outputs/*backup*.html
+outputs/*배포버전*.html
+outputs/휴가신청서.jpg
