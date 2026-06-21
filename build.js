@@ -19,10 +19,13 @@ html = html.replaceAll('__SUPABASE_KEY__', key);
 
 fs.mkdirSync(outDir, { recursive: true });
 
-// 로고 이미지 복사
+// 로고 이미지 복사 (deploy/ 없으면 outputs/ 에서 복사)
 const logoSrc = path.join(__dirname, 'deploy', 'imec-logo.png');
+const logoFallback = path.join(__dirname, 'outputs', 'imec-logo.png');
 if (fs.existsSync(logoSrc)) {
   fs.copyFileSync(logoSrc, path.join(outDir, 'imec-logo.png'));
+} else if (fs.existsSync(logoFallback)) {
+  fs.copyFileSync(logoFallback, path.join(outDir, 'imec-logo.png'));
 }
 
 fs.writeFileSync(out, html, 'utf8');
