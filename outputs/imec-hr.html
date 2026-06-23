@@ -1602,7 +1602,7 @@
         team_th_name:"Name",team_th_dept:"Dept",team_th_used:"Used",team_th_remaining:"Left",
         team_th_total:"Total",team_th_detail:"Detail",team_selectEmp:"Please select an employee.",
         emp_h1:"Employee Management",emp_sub:"Register, edit, and manage employees.",
-        emp_csvBtn:"↓ Download CSV",emp_addTitle:"Add Employee",
+        emp_logBtn:"View Logs",emp_csvBtn:"↓ Download CSV",emp_addTitle:"Add Employee",
         emp_searchPlaceholder:"Search by name, dept, or email",
         emp_th_name:"Name",emp_th_dept:"Dept",emp_th_position:"Position",emp_th_email:"Email",
         emp_th_role:"Role",emp_th_status:"Status",emp_th_notify:"Notify",emp_th_manage:"Action",
@@ -1749,7 +1749,7 @@
         team_th_name:"氏名",team_th_dept:"部署",team_th_used:"使用",team_th_remaining:"残り",
         team_th_total:"合計",team_th_detail:"詳細",team_selectEmp:"社員を選択してください。",
         emp_h1:"社員管理",emp_sub:"社員の登録、編集、退職処理を行います。",
-        emp_csvBtn:"↓ CSVダウンロード",emp_addTitle:"社員追加",
+        emp_logBtn:"ログを見る",emp_csvBtn:"↓ CSVダウンロード",emp_addTitle:"社員追加",
         emp_searchPlaceholder:"氏名、部署、またはメールで検索",
         emp_th_name:"氏名",emp_th_dept:"部署",emp_th_position:"役職",emp_th_email:"メール",
         emp_th_role:"権限",emp_th_status:"ステータス",emp_th_notify:"通知",emp_th_manage:"操作",
@@ -3019,8 +3019,12 @@ ${empLeaves.map(l=>makePageBlock(l)).join("\n")}
     window.deleteHoliday = date => {
       if(!isAdmin(currentUser)) return showToast("관리자만 공휴일을 삭제할 수 있습니다.");
       if(!confirm(`${formatDate(date)} ${koreanHolidays[date]} 공휴일을 삭제할까요?`)) return;
-      if(baseKoreanHolidays[date]) holidayStore[date]=null;
-      else delete holidayStore[date];
+      if(baseKoreanHolidays[date]) {
+            holidayStore[date]=null;
+          } else {
+            delete holidayStore[date];
+            sbDel("imec_holidays","date",date);
+      }
       koreanHolidays=buildHolidays();
       saveHolidayStore(); renderHolidayTable(); renderCalendar();
       showToast("공휴일이 삭제되었습니다.");
@@ -4297,7 +4301,13 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const year=new Date(date+"T00:00:00").getFullYear();
       if(year<TODAY.getFullYear()||year>TODAY.getFullYear()+4) return showLoginError("공휴일 연도 확인","올해부터 향후 5년 공휴일만 관리할 수 있습니다.");
       if(!name) return showToast("공휴일명을 입력하세요.");
-      if(original&&original!==date) holidayStore[original]=baseKoreanHolidays[original]?null:undefined;
+      if(original&&original!==date) {
+        if(baseKoreanHolidays[original]) holidayStore[original]=null;
+        else {
+          holidayStore[original]=undefined;
+          sbDel("imec_holidays","date",original);
+        }
+      }
       if(holidayStore[original]===undefined) delete holidayStore[original];
       holidayStore[date]=baseKoreanHolidays[date]===name?undefined:name;
       if(holidayStore[date]===undefined) delete holidayStore[date];
