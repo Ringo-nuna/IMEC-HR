@@ -921,8 +921,8 @@
           <div class="headline">
             <div><p class="eyebrow">Admin</p><h1>직원 관리</h1><p class="sub">직원 등록, 수정, 퇴사 처리를 합니다.</p></div>
             <div style="display:flex;gap:8px">
-              <button class="secondary" onclick="showAuditLog()" style="font-size:12px">로그 확인</button>
-              <button class="secondary" onclick="exportEmployeeCsv()">↓ CSV 다운로드</button>
+              <button id="empAuditBtn" class="secondary" onclick="showAuditLog()" style="font-size:12px">로그 보기</button>
+              <button id="empCsvBtn" class="secondary" onclick="exportEmployeeCsv()">↓ CSV 다운로드</button>
             </div>
           </div>
           <article class="card" style="padding:18px 22px;margin-bottom:18px">
@@ -1964,7 +1964,8 @@
       // Employees page
       set("#page-employees .headline h1", L.emp_h1);
       set("#page-employees .headline .sub", L.emp_sub);
-      const empCsvBtn=document.querySelector("#page-employees .headline .secondary"); if(empCsvBtn)empCsvBtn.textContent=L.emp_csvBtn;
+      const empAuditBtn=document.getElementById("empAuditBtn"); if(empAuditBtn)empAuditBtn.textContent=L.emp_logBtn||"로그 보기";
+      const empCsvBtn=document.getElementById("empCsvBtn"); if(empCsvBtn)empCsvBtn.textContent=L.emp_csvBtn;
       set("#page-employees h3", L.emp_addTitle);
       setP("#empMgmtSearch","placeholder",L.emp_searchPlaceholder);
       // 직원 관리 테이블은 관리자 전용이므로 항상 한국어 유지 (헤더 번역 불필요)
