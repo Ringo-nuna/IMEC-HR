@@ -507,6 +507,11 @@
       /* 테이블: 가로 스크롤 */
       .table-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
       .table-card table { min-width: 580px; }
+      /* 출장 테이블은 컬럼이 많으므로 더 넓게 */
+      #tripTable { min-width: 900px; }
+      /* 관리자 디테일 패널 가로 스크롤 */
+      .admin-detail { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+      .admin-detail table { min-width: 640px; }
       /* 직원관리 테이블은 별도로 더 넓게 */
       .employee-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
       /* 캘린더 */
@@ -636,13 +641,26 @@
     .optional-badge { font-size:10px;color:var(--muted);font-weight:400;margin-left:4px; }
     textarea.field-textarea { resize:vertical;min-height:60px;font-family:inherit;font-size:14px;width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;padding:9px 12px;color:var(--ink);background:var(--paper); }
     textarea.field-textarea:focus { outline:none;border-color:var(--green); }
+    /* ── Language toggle ── */
+    .lang-toggle { display:flex;gap:3px;margin-right:8px; }
+    .lang-btn { border:1px solid var(--line);background:white;color:var(--muted);padding:4px 9px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:.4px;cursor:pointer;transition:.15s; }
+    .lang-btn:hover { background:var(--canvas);color:var(--ink); }
+    .lang-btn.active { background:var(--green);color:white;border-color:var(--green); }
   </style>
 </head>
 <body>
   <section class="login-screen" id="loginScreen">
     <div class="login-panel">
       <div class="login-box">
-        <div class="login-brand-row"><img class="login-logo" src="imec-logo.png" alt="IMEC"><strong>HR</strong></div>
+        <div class="login-brand-row"><img class="login-logo" src="imec-logo.png" alt="IMEC"><strong>HR</strong>
+          <div style="margin-left:auto">
+            <div class="lang-toggle">
+              <button class="lang-btn active" onclick="switchLang('kr')">KR</button>
+              <button class="lang-btn" onclick="switchLang('en')">EN</button>
+              <button class="lang-btn" onclick="switchLang('jp')">JP</button>
+            </div>
+          </div>
+        </div>
         <p>회사 이메일 계정으로 로그인하세요.</p>
         <form class="login-form" id="loginForm">
           <div class="field"><label for="loginId">아이디</label><div class="login-id-wrap"><input id="loginId" autocomplete="username" placeholder="아이디" required><span class="login-domain">@imecs.co.kr</span></div></div>
@@ -685,6 +703,11 @@
         <button class="mobile-menu" id="mobileMenu">☰</button>
         <div class="date-chip" id="todayText"></div>
         <div class="spacer"></div>
+        <div class="lang-toggle" id="langToggle">
+          <button class="lang-btn active" onclick="switchLang('kr')">KR</button>
+          <button class="lang-btn" onclick="switchLang('en')">EN</button>
+          <button class="lang-btn" onclick="switchLang('jp')">JP</button>
+        </div>
         <div class="profile">
           <div class="avatar" id="topAvatar">IM</div>
           <div class="profile-name"><strong id="topName">사용자</strong><small id="topRole">로그인 필요</small></div>
@@ -706,7 +729,7 @@
             <article class="metric accent">
               <span class="metric-label">나의 잔여 연차</span>
               <div class="metric-value"><span id="remainingMetric">10.5</span><small> 일</small></div>
-              <div class="metric-note">사용 예정 연차 <strong id="scheduledDashboardMetric">1.0일</strong> · <span id="grantedMetricNote">총 16일</span></div><div class="metric-orbit"></div>
+              <div class="metric-note" id="dashMetricNote">사용 예정 연차 <strong id="scheduledDashboardMetric">1.0일</strong> · <span id="grantedMetricNote">총 16일</span></div><div class="metric-orbit"></div>
             </article>
             <article class="metric" style="cursor:pointer" onclick="openMonthDetailModal('leave')">
               <span class="metric-label">이번 달 팀 휴가</span>
@@ -848,7 +871,7 @@
                 <div class="field"><label for="profilePhone">전화번호</label><input id="profilePhone" type="tel" inputmode="tel" maxlength="13" autocomplete="tel" placeholder="000-0000-0000"></div>
                 <div class="field"><label for="profileBirth">생년월일</label><input id="profileBirth" type="date"></div>
                 <div class="field full"><label for="profileAddress">주소</label><input id="profileAddress" placeholder="주소 입력"></div>
-                <div class="field full"><label>비상 연락처</label><div class="event-three-col">
+                <div class="field full"><label id="profileEmergencyLabel">비상 연락처</label><div class="event-three-col">
                   <input id="profileEmergencyName" placeholder="이름">
                   <select id="profileEmergencyRelation" aria-label="비상 연락처 관계">
                     <option value="">관계 선택</option>
@@ -897,7 +920,10 @@
         <section class="page admin-only" id="page-employees">
           <div class="headline">
             <div><p class="eyebrow">Admin</p><h1>직원 관리</h1><p class="sub">직원 등록, 수정, 퇴사 처리를 합니다.</p></div>
-            <button class="secondary" onclick="exportEmployeeCsv()">↓ CSV 다운로드</button>
+            <div style="display:flex;gap:8px">
+              <button class="secondary" onclick="showAuditLog()" style="font-size:12px">📋 감사 로그</button>
+              <button class="secondary" onclick="exportEmployeeCsv()">↓ CSV 다운로드</button>
+            </div>
           </div>
           <article class="card" style="padding:18px 22px;margin-bottom:18px">
             <h3 style="margin:0 0 12px;font-size:14px">직원 추가</h3>
@@ -906,6 +932,7 @@
               <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
                 <div class="field" style="margin:0;min-width:90px;flex:1"><label style="font-size:11px">부서</label><input id="employeeDept" placeholder="영업팀" required style="padding:8px 10px;font-size:13px"></div>
                 <div class="field" style="margin:0;min-width:70px;flex:1"><label style="font-size:11px">이름</label><input id="employeeName" placeholder="예: 김대한" required style="padding:8px 10px;font-size:13px"></div>
+                <div class="field" style="margin:0;min-width:120px;flex:1.5"><label id="empFormNameEnLabel" style="font-size:11px">영문명</label><input id="employeeNameEn" placeholder="예: Hong Gil Dong" style="padding:8px 10px;font-size:13px"></div>
                 <div class="field" style="margin:0;min-width:70px;flex:1"><label style="font-size:11px">직급</label><input id="employeePosition" placeholder="대리" style="padding:8px 10px;font-size:13px"></div>
                 <div class="field" style="margin:0;min-width:160px;flex:2"><label style="font-size:11px">이메일</label><input id="employeeEmail" type="email" placeholder="name@imecs.co.kr" required style="padding:8px 10px;font-size:13px"></div>
                 <div class="field" style="margin:0;min-width:80px"><label style="font-size:11px">권한</label><select id="employeeRole" style="padding:8px 10px;font-size:13px"><option value="일반">일반</option><option value="관리자">관리자</option></select></div>
@@ -925,7 +952,7 @@
           </div>
           <article class="card table-card employee-table-scroll" id="empMgmtTableScroll">
             <table class="employee-management-table" id="empMgmtDataTable" style="font-size:12px;white-space:nowrap">
-              <thead><tr><th style="padding:5px 8px">이름</th><th style="padding:5px 8px">부서</th><th style="padding:5px 8px">직급</th><th style="padding:5px 8px">이메일</th><th style="padding:5px 8px">권한</th><th style="padding:5px 8px">상태</th><th style="padding:5px 8px">근태통보</th><th style="padding:5px 8px">관리</th><th style="padding:5px 8px">전화번호</th><th style="padding:5px 8px">생년월일</th><th style="padding:5px 8px">주소</th><th style="padding:5px 8px">비상 연락처 이름</th><th style="padding:5px 8px">관계</th><th style="padding:5px 8px">비상 연락처</th></tr></thead>
+              <thead><tr><th style="padding:5px 8px">이름</th><th style="padding:5px 8px;color:var(--muted)">영문명</th><th style="padding:5px 8px">부서</th><th style="padding:5px 8px">직급</th><th style="padding:5px 8px">이메일</th><th style="padding:5px 8px">권한</th><th style="padding:5px 8px">상태</th><th style="padding:5px 8px">근태통보</th><th style="padding:5px 8px">관리</th><th style="padding:5px 8px">전화번호</th><th style="padding:5px 8px">생년월일</th><th style="padding:5px 8px">주소</th><th style="padding:5px 8px">비상 연락처 이름</th><th style="padding:5px 8px">관계</th><th style="padding:5px 8px">비상 연락처</th></tr></thead>
               <tbody id="empMgmtTable"></tbody>
             </table>
           </article>
@@ -980,7 +1007,7 @@
                 <button class="secondary" type="button" id="copyShareLinkBtn">🔗 직원 공유 링크 복사</button>
               </div>
             </form>
-            <div style="margin-top:26px;padding-top:22px;border-top:1px solid var(--line)">
+            <div style="display:none">
               <p style="margin:0 0 12px;font-size:13px;font-weight:700">전체 설정 순서</p>
               <ol style="margin:0;padding-left:18px;font-size:12px;color:var(--muted);line-height:2.1">
                 <li><strong style="color:var(--ink)">supabase.com</strong> 무료 계정 → New Project 생성</li>
@@ -1065,53 +1092,53 @@
   <div class="modal-backdrop" id="eventModal">
     <div class="modal event-modal">
       <div class="modal-head">
-        <div class="modal-title-wrap"><h2 id="eventModalTitle">새 일정 만들기</h2><p>팀과 공유할 일정을 간편하게 등록하세요.</p></div>
+        <div class="modal-title-wrap"><h2 id="eventModalTitle">새 일정 만들기</h2><p id="eventModalSub">팀과 공유할 일정을 간편하게 등록하세요.</p></div>
         <button class="close" data-close>×</button>
       </div>
       <form id="eventForm">
         <div class="modal-body">
           <div class="form-grid">
             <div class="event-section">
-              <div class="event-section-title"><span class="section-index">1</span> 일정 종류</div>
+              <div class="event-section-title"><span class="section-index">1</span><span id="eventSec1Label"> 일정 종류</span></div>
               <div class="event-type-picker">
-                <button type="button" class="event-type-btn active" data-event-type="leave"><span>◷</span>연차</button>
-                <button type="button" class="event-type-btn" data-event-type="trip"><span>↗</span>출장</button>
+                <button type="button" class="event-type-btn active" data-event-type="leave" id="eventTypeBtnLeave"><span>◷</span>연차</button>
+                <button type="button" class="event-type-btn" data-event-type="trip" id="eventTypeBtnTrip"><span>↗</span>출장</button>
               </div>
               <select id="eventType" required><option value="leave">연차</option><option value="trip">출장</option><option value="other">기타</option></select>
             </div>
 
             <div class="event-section">
-              <div class="event-section-title"><span class="section-index">2</span> 일정 정보</div>
+              <div class="event-section-title"><span class="section-index">2</span><span id="eventSec2Label"> 일정 정보</span></div>
               <div class="event-section-grid" id="eventInfoGrid">
-                <div class="field full event-leave"><label for="eventLeaveType">연차 종류</label><select id="eventLeaveType"><option value="연차">연차 (1일)</option><option value="오전 반차">오전 반차 (0.5일)</option><option value="오후 반차">오후 반차 (0.5일)</option><option value="특별휴가">특별휴가 (차감 없음)</option><option value="무급병가">무급병가 (차감 없음)</option><option value="유급병가">유급병가 (차감 없음)</option><option value="건강검진">건강검진 (차감 없음)</option><option value="건강휴가">건강휴가 (차감 없음)</option><option value="공가">공가 (차감 없음)</option></select></div>
+                <div class="field full event-leave"><label for="eventLeaveType" id="eventLeaveTypeLabel">연차 종류</label><select id="eventLeaveType"><option value="연차">연차 (1일)</option><option value="오전 반차">오전 반차 (0.5일)</option><option value="오후 반차">오후 반차 (0.5일)</option><option value="특별휴가">특별휴가 (차감 없음)</option><option value="무급병가">무급병가 (차감 없음)</option><option value="유급병가">유급병가 (차감 없음)</option><option value="건강검진">건강검진 (차감 없음)</option><option value="건강휴가">건강휴가 (차감 없음)</option><option value="공가">공가 (차감 없음)</option></select></div>
                 <div class="field event-date date-field"><label for="eventStart" id="eventStartLabel">시작 날짜</label><input id="eventStart" type="date" required></div>
-                <div class="field event-date event-end date-field"><label for="eventEnd">종료 날짜</label><input id="eventEnd" type="date" required></div>
-                <div class="field event-leave"><label for="eventLeaveDays">차감 일수</label><input id="eventLeaveDays" type="number" value="1" readonly></div>
+                <div class="field event-date event-end date-field"><label for="eventEnd" id="eventEndLabel">종료 날짜</label><input id="eventEnd" type="date" required></div>
+                <div class="field event-leave"><label for="eventLeaveDays" id="eventDeductLabel">차감 일수</label><input id="eventLeaveDays" type="number" value="1" readonly></div>
                 <div class="field full event-leave"><span class="field-hint" id="businessDayHint">주말과 대한민국 공휴일을 제외해 자동 계산합니다.</span></div>
-                <div class="field full event-leave"><label for="eventLeaveReason">연차 사유</label><input id="eventLeaveReason" placeholder="예: 개인 일정"></div>
+                <div class="field full event-leave"><label for="eventLeaveReason" id="eventReasonLabel">연차 사유</label><input id="eventLeaveReason" placeholder="예: 개인 일정"></div>
                 <input type="hidden" id="eventTitle"><input type="hidden" id="eventLocation"><input type="hidden" id="eventTime">
-                <div class="field event-trip" style="display:none"><label for="eventDestination">행선지</label><input id="eventDestination" placeholder="예: 여수"></div>
-                <div class="field event-other other-location" style="display:none"><label for="eventOtherLocation">장소</label><input id="eventOtherLocation" placeholder="예: 강남역"></div>
-                <div class="field event-other other-time" style="display:none"><label for="eventOtherTime">시작 시간</label><input id="eventOtherTime" type="time" value="18:00"></div>
-                <div class="field full event-other other-title" style="display:none"><label for="eventOtherTitle">이벤트명</label><input id="eventOtherTitle" placeholder="예: 팀 회식"></div>
+                <div class="field event-trip" style="display:none"><label for="eventDestination" id="eventDestLabel">행선지</label><input id="eventDestination" placeholder="예: 여수"></div>
+                <div class="field event-other other-location" style="display:none"><label for="eventOtherLocation" id="eventLocationLabel">장소</label><input id="eventOtherLocation" placeholder="예: 강남역"></div>
+                <div class="field event-other other-time" style="display:none"><label for="eventOtherTime" id="eventTimeLabel">시작 시간</label><input id="eventOtherTime" type="time" value="18:00"></div>
+                <div class="field full event-other other-title" style="display:none"><label for="eventOtherTitle" id="eventNameLabel">이벤트명</label><input id="eventOtherTitle" placeholder="예: 팀 회식"></div>
               </div>
             </div>
 
             <div class="event-section event-people" style="display:none">
-              <div class="event-section-title"><span class="section-index">3</span> 관련 인원</div>
+              <div class="event-section-title"><span class="section-index">3</span><span id="eventSec3Label"> 관련 인원</span></div>
               <div class="field">
-                <label for="attendeeSearch">직원 검색</label>
+                <label for="attendeeSearch" id="eventAttendeeLabel">직원 검색</label>
                 <div class="attendee-search">
                   <input id="attendeeSearch" autocomplete="off" placeholder="이름 또는 부서를 입력하세요">
                   <div class="attendee-results" id="attendeeResults"></div>
                 </div>
                 <div class="selected-attendees" id="selectedAttendees"></div>
-                <span class="field-hint">메일 체크가 켜진 직원에게 일정 안내 메일을 보냅니다.</span>
+                <span class="field-hint" id="eventAttendeeHint">메일 체크가 켜진 직원에게 일정 안내 메일을 보냅니다.</span>
               </div>
             </div>
           </div>
         </div>
-        <div class="modal-foot"><button type="button" class="secondary" data-close>취소</button><button class="primary" type="submit">일정 등록하기</button></div>
+        <div class="modal-foot"><button type="button" class="secondary" id="eventCancelBtn" data-close>취소</button><button class="primary" type="submit" id="eventSubmitBtn">일정 등록하기</button></div>
       </form>
     </div>
   </div>
@@ -1171,22 +1198,22 @@
         <input type="hidden" id="tripCreatorEmail">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:10px">
           <div class="field" style="grid-column:1/-1">
-            <label>출장지 <span style="color:var(--red)">*</span></label>
+            <label id="tmDestLabel">출장지 <span style="color:var(--red)">*</span></label>
             <div style="display:flex;align-items:center;gap:8px">
               <div style="display:flex;gap:0;border:1.5px solid var(--line);border-radius:7px;overflow:hidden;flex-shrink:0">
                 <button type="button" id="tmDomesticBtn" onclick="setTripArea('domestic')" style="padding:6px 11px;font-size:12px;font-weight:600;border:none;background:var(--green);color:#fff;cursor:pointer">국내</button>
                 <button type="button" id="tmOverseasBtn" onclick="setTripArea('overseas')" style="padding:6px 11px;font-size:12px;font-weight:600;border:none;background:#fff;color:var(--muted);cursor:pointer">해외</button>
               </div>
               <input id="tmDest" placeholder="행선지 입력" required style="flex:1">
-              <label style="display:flex;align-items:center;gap:5px;white-space:nowrap;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;flex-shrink:0">
+              <label id="tmOutworkLabel" style="display:flex;align-items:center;gap:5px;white-space:nowrap;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;flex-shrink:0">
                 <input type="checkbox" id="tmIsOutwork" style="accent-color:var(--green);width:14px;height:14px"> 외근
               </label>
             </div>
           </div>
-          <div class="field"><label>시작일 <span style="color:var(--red)">*</span></label><input id="tmStart" type="date" required></div>
-          <div class="field"><label>종료일 <span style="color:var(--red)">*</span></label><input id="tmEnd" type="date" required></div>
+          <div class="field"><label id="tmStartLabel">시작일 <span style="color:var(--red)">*</span></label><input id="tmStart" type="date" required></div>
+          <div class="field"><label id="tmEndLabel">종료일 <span style="color:var(--red)">*</span></label><input id="tmEnd" type="date" required></div>
           <div style="grid-column:1/-1;margin-top:-6px"><span id="tmDateError" style="display:none;color:var(--red);font-size:12px"></span></div>
-          <div class="field" style="grid-column:1/-1"><label>동행자 <span style="font-weight:400;font-size:11px;color:var(--muted)">(선택)</span></label>
+          <div class="field" style="grid-column:1/-1"><label id="tmCompanionLabel">동행자 <span style="font-weight:400;font-size:11px;color:var(--muted)">(선택)</span></label>
             <div style="position:relative">
               <input id="tmCompanionsInput" placeholder="이름 입력 후 선택" autocomplete="off" style="width:100%">
               <div id="tmCompanionsDropdown" style="display:none;position:absolute;z-index:200;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.14);width:100%;max-height:160px;overflow-y:auto;top:calc(100% + 4px);left:0"></div>
@@ -1194,18 +1221,18 @@
             <input type="hidden" id="tmCompanions">
             <div id="tmCompanionChips" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:7px"></div>
           </div>
-          <div class="field"><label>Order NO# <span style="font-weight:400;font-size:11px;color:var(--muted)">(선택)</span></label><input id="tmOrderNo" placeholder="오더 번호"></div>
-          <div class="field"><label>Order 내용 <span style="font-weight:400;font-size:11px;color:var(--muted)">(선택)</span></label><input id="tmPO" placeholder="오더 내용"></div>
-          <div class="field" style="grid-column:1/-1"><label>출장 내용 <span style="font-weight:400;font-size:11px;color:var(--muted)">(선택)</span></label>
+          <div class="field"><label id="tmOrderNoLabel">Order NO# <span style="font-weight:400;font-size:11px;color:var(--muted)">(선택)</span></label><input id="tmOrderNo" placeholder="오더 번호"></div>
+          <div class="field"><label id="tmPOLabel">Order 내용 <span style="font-weight:400;font-size:11px;color:var(--muted)">(선택)</span></label><input id="tmPO" placeholder="오더 내용"></div>
+          <div class="field" style="grid-column:1/-1"><label id="tmDescLabel">출장 내용 <span style="font-weight:400;font-size:11px;color:var(--muted)">(선택)</span></label>
             <textarea id="tmDesc" class="field-textarea" rows="2" placeholder="출장 목적 및 주요 내용"></textarea>
           </div>
         </div>
         <div style="background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;padding:12px 14px;margin-bottom:14px">
-          <div style="font-size:12px;font-weight:600;color:#444;margin-bottom:8px">메일로 통보</div>
+          <div id="tmNotifyLabel" style="font-size:12px;font-weight:600;color:#444;margin-bottom:8px">메일로 통보</div>
           <div id="tmNotifyList" style="display:flex;flex-wrap:wrap;gap:8px 16px"></div>
         </div>
         <div class="modal-foot">
-          <button type="button" class="secondary" data-close>취소</button>
+          <button type="button" class="secondary" id="tripModalCancelBtn" data-close>취소</button>
           <button type="submit" class="primary" id="tripModalSubmitBtn">등록</button>
         </div>
       </form>
@@ -1225,32 +1252,32 @@
           <!-- 본문 표 -->
           <table class="leave-form-table" style="border-collapse:collapse;width:100%;font-size:13px;color:#111">
             <tr>
-              <td style="border:1px solid #555;padding:9px 14px;background:#e8e8e8;font-weight:600;width:90px;text-align:center;letter-spacing:3px">소&nbsp;&nbsp;&nbsp;속</td>
+              <td id="lfLabelDept" style="border:1px solid #555;padding:9px 14px;background:#e8e8e8;font-weight:600;width:90px;text-align:center;letter-spacing:3px">소&nbsp;&nbsp;&nbsp;속</td>
               <td style="border:1px solid #555;padding:9px 14px"><input id="lfDept" readonly style="border:none;background:transparent;font-size:13px;width:100%;outline:none;color:#111;font-family:inherit"></td>
             </tr>
             <tr>
-              <td style="border:1px solid #555;padding:9px 14px;background:#e8e8e8;font-weight:600;text-align:center;letter-spacing:3px">직&nbsp;&nbsp;&nbsp;위</td>
+              <td id="lfLabelPosition" style="border:1px solid #555;padding:9px 14px;background:#e8e8e8;font-weight:600;text-align:center;letter-spacing:3px">직&nbsp;&nbsp;&nbsp;위</td>
               <td style="border:1px solid #555;padding:9px 14px"><input id="lfPosition" readonly style="border:none;background:transparent;font-size:13px;width:100%;outline:none;color:#111;font-family:inherit"></td>
             </tr>
             <tr>
-              <td style="border:1px solid #555;padding:9px 14px;background:#e8e8e8;font-weight:600;text-align:center;letter-spacing:3px">성&nbsp;&nbsp;&nbsp;명</td>
+              <td id="lfLabelName" style="border:1px solid #555;padding:9px 14px;background:#e8e8e8;font-weight:600;text-align:center;letter-spacing:3px">성&nbsp;&nbsp;&nbsp;명</td>
               <td style="border:1px solid #555;padding:9px 14px"><input id="lfName" readonly style="border:none;background:transparent;font-size:13px;width:100%;outline:none;color:#111;font-family:inherit"></td>
             </tr>
             <tr>
-              <td style="border:1px solid #555;padding:9px 14px;background:#e8e8e8;font-weight:600;text-align:center;letter-spacing:1px">휴가 종류</td>
+              <td id="lfLabelType" style="border:1px solid #555;padding:9px 14px;background:#e8e8e8;font-weight:600;text-align:center;letter-spacing:1px">휴가 종류</td>
               <td style="border:1px solid #555;padding:6px 14px">
                 <select id="lfType" style="border:none;background:transparent;font-size:13px;width:100%;outline:none;color:#111;font-family:inherit;cursor:pointer">
-                  <option>연차</option><option>오전 반차</option><option>오후 반차</option>
-                  <option>특별휴가</option><option>무급병가</option><option>유급병가</option><option>건강검진</option><option>건강휴가</option><option>공가</option>
+                  <option value="연차">연차</option><option value="오전 반차">오전 반차</option><option value="오후 반차">오후 반차</option>
+                  <option value="특별휴가">특별휴가</option><option value="무급병가">무급병가</option><option value="유급병가">유급병가</option><option value="건강검진">건강검진</option><option value="건강휴가">건강휴가</option><option value="공가">공가</option>
                 </select>
               </td>
             </tr>
             <tr>
-              <td style="border:1px solid #555;padding:9px 14px;background:#e8e8e8;font-weight:600;text-align:center;letter-spacing:1px">휴가 사유</td>
+              <td id="lfLabelReason" style="border:1px solid #555;padding:9px 14px;background:#e8e8e8;font-weight:600;text-align:center;letter-spacing:1px">휴가 사유</td>
               <td style="border:1px solid #555;padding:6px 14px"><input id="lfReason" placeholder="개인 사유" style="border:none;background:transparent;font-size:13px;width:100%;outline:none;color:#111;font-family:inherit"></td>
             </tr>
             <tr>
-              <td style="border:1px solid #555;padding:9px 14px;background:#e8e8e8;font-weight:600;text-align:center;letter-spacing:1px;vertical-align:middle">휴가 기간</td>
+              <td id="lfLabelPeriod" style="border:1px solid #555;padding:9px 14px;background:#e8e8e8;font-weight:600;text-align:center;letter-spacing:1px;vertical-align:middle">휴가 기간</td>
               <td style="border:1px solid #555;padding:8px 14px">
                 <div class="leave-period-row">
                   <input id="lfStart" type="date" style="border:1px solid #ccc;border-radius:4px;padding:4px 8px;font-size:13px;font-family:inherit;color:#111">
@@ -1262,26 +1289,26 @@
               </td>
             </tr>
             <tr>
-              <td style="border:1px solid #555;padding:9px 14px;background:#e8e8e8;font-weight:600;text-align:center;letter-spacing:1px">비상연락처</td>
+              <td id="lfLabelEmergency" style="border:1px solid #555;padding:9px 14px;background:#e8e8e8;font-weight:600;text-align:center;letter-spacing:1px">비상연락처</td>
               <td style="border:1px solid #555;padding:7px 10px">
                 <div class="leave-emergency-grid">
                   <input id="lfEmergencyName" placeholder="이름">
                   <select id="lfEmergencyRelation" aria-label="휴가 신청 비상 연락처 관계">
                     <option value="">관계 선택</option>
-                    <option>배우자</option><option>부</option><option>모</option><option>자녀</option>
-                    <option>형제자매</option><option>조부모</option><option>친구</option><option>친척</option><option>기타</option>
+                    <option value="배우자">배우자</option><option value="부">부</option><option value="모">모</option><option value="자녀">자녀</option>
+                    <option value="형제자매">형제자매</option><option value="조부모">조부모</option><option value="친구">친구</option><option value="친척">친척</option><option value="기타">기타</option>
                   </select>
                   <input id="lfEmergencyPhone" type="tel" inputmode="tel" maxlength="13" autocomplete="tel" placeholder="000-0000-0000">
                 </div>
               </td>
             </tr>
             <tr>
-              <td style="border:1px solid #555;padding:9px 14px;background:#e8e8e8;font-weight:600;text-align:center;letter-spacing:1px">기타 사항</td>
+              <td id="lfLabelNotes" style="border:1px solid #555;padding:9px 14px;background:#e8e8e8;font-weight:600;text-align:center;letter-spacing:1px">기타 사항</td>
               <td style="border:1px solid #555;padding:6px 14px"><input id="lfNotes" placeholder="" style="border:none;background:transparent;font-size:13px;width:100%;outline:none;color:#111;font-family:inherit"></td>
             </tr>
           </table>
           <!-- 하단 문구 -->
-          <div style="text-align:center;padding:18px 0 10px;font-size:13px;color:#111;font-weight:600;letter-spacing:1px">
+          <div id="lfSubmitText" style="text-align:center;padding:18px 0 10px;font-size:13px;color:#111;font-weight:600;letter-spacing:1px">
             위와 같이 휴가를 신청하오니 승인하여 주시기 바랍니다.
           </div>
           <div id="lfDateLine" style="text-align:center;font-size:13px;color:#111;padding-bottom:14px"></div>
@@ -1295,13 +1322,13 @@
         <!-- 메일 통보 + 에러 + 버튼 -->
         <div style="padding:10px 20px 16px">
           <div style="background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;padding:12px 14px;margin-bottom:12px">
-            <div style="font-size:12px;font-weight:600;color:#444;margin-bottom:8px">메일로 통보</div>
+            <div id="lfNotifyLabel" style="font-size:12px;font-weight:600;color:#444;margin-bottom:8px">메일로 통보</div>
             <div id="lfNotifyList" style="display:flex;flex-wrap:wrap;gap:8px 16px"></div>
           </div>
           <div id="lfError" style="color:#c0392b;font-size:12px;margin-bottom:8px;display:none"></div>
           <div class="modal-foot" style="padding:0">
-            <button type="button" class="secondary" data-close>취소</button>
-            <button type="submit" class="primary">신청서 제출</button>
+            <button type="button" class="secondary" id="lfCancelBtn" data-close>취소</button>
+            <button type="submit" class="primary" id="lfSubmitBtn">신청서 제출</button>
           </div>
         </div>
       </form>
@@ -1311,15 +1338,15 @@
   <!-- 연차 신청서 제출 팝업 -->
   <div class="modal-backdrop" id="leaveSubmitModal">
     <div class="modal" style="max-width:500px">
-      <h2 style="margin:0 0 6px">연차 신청서 제출</h2>
-      <p style="margin:0 0 16px;font-size:13px;color:var(--muted)">아래 내용을 확인하고 통보 대상을 선택 후 제출하세요.</p>
+      <h2 id="leaveSubmitTitle" style="margin:0 0 6px">연차 신청서 제출</h2>
+      <p id="leaveSubmitSub" style="margin:0 0 16px;font-size:13px;color:var(--muted)">아래 내용을 확인하고 통보 대상을 선택 후 제출하세요.</p>
       <div id="leaveSubmitPreview" class="leave-confirm-preview"></div>
       <div style="margin-top:14px;padding:14px 16px;background:var(--canvas);border-radius:10px">
-        <p style="margin:0 0 10px;font-size:13px;font-weight:600">통보 <span style="font-weight:400;color:var(--muted);font-size:12px">(체크된 분께 알림)</span></p>
+        <p id="leaveSubmitNotifyLabel" style="margin:0 0 10px;font-size:13px;font-weight:600">통보 <span style="font-weight:400;color:var(--muted);font-size:12px">(체크된 분께 알림)</span></p>
         <div id="leaveNotifyList" style="display:flex;gap:16px;flex-wrap:wrap"></div>
       </div>
       <div class="modal-foot">
-        <button class="secondary" data-close>취소</button>
+        <button class="secondary" id="leaveSubmitCancelBtn" data-close>취소</button>
         <button class="secondary" id="leaveSubmitDownloadBtn">↓ 신청서 저장</button>
         <button class="primary" id="leaveSubmitConfirmBtn">제출 완료</button>
       </div>
@@ -1330,7 +1357,7 @@
   <div class="modal-backdrop" id="leaveConfirmModal">
     <div class="modal" style="max-width:360px;text-align:center;padding:32px 28px">
       <div style="font-size:32px;margin-bottom:14px">📋</div>
-      <h2 style="margin:0 0 8px;font-size:17px">연차 신청서를 최종 제출하시겠습니까?</h2>
+      <h2 id="leaveConfirmTitle" style="margin:0 0 8px;font-size:17px">연차 신청서를 최종 제출하시겠습니까?</h2>
       <p id="leaveConfirmDesc" style="margin:0 0 24px;font-size:13px;color:var(--muted)"></p>
       <div style="display:flex;gap:10px;justify-content:center">
         <button class="secondary" id="leaveConfirmNo" style="min-width:90px">아니오</button>
@@ -1362,11 +1389,680 @@
 
   <script>
     const esc = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+
+    // ── i18n ─────────────────────────────────────────────────────────────
+    window._lang = "kr";
+    const TRANSLATIONS = {
+      kr:{
+        nav_dashboard:"공유 캘린더",nav_leave:"연차 등록/조회",nav_trips:"출장 등록/조회",
+        nav_admin:"관리자",nav_team:"전사 연차 현황",nav_tripsAdmin:"전사 출장 현황",
+        nav_employees:"직원 관리",nav_holidays:"공휴일 관리",side_usage:"나의 연차 사용률",
+        topbar_myInfo:"내 정보",topbar_changePw:"비밀번호 변경",topbar_logout:"로그아웃",
+        login_subtitle:"회사 이메일 계정으로 로그인하세요.",
+        login_idLabel:"아이디",login_idPlaceholder:"아이디",
+        login_pwLabel:"비밀번호",login_pwPlaceholder:"비밀번호 입력",
+        login_btn:"로그인",login_help:"비밀번호 초기화는 관리자에게 문의하세요",
+        dash_h1:"오늘도 좋은 하루예요.",dash_sub:"팀의 휴식과 중요한 일정을 한눈에 확인하세요.",
+        dash_myLeave:"나의 잔여 연차",dash_teamLeave:"이번 달 팀 휴가",dash_monthTrip:"이번 달 출장",
+        dash_today:"오늘",dash_filterLabel:"일정 구분",dash_leaveFilter:"연차",dash_tripFilter:"출장",
+        dash_weekdays:["일","월","화","수","목","금","토"],
+        dash_upcoming:"다가오는 일정",dash_upcomingSub:"가까운 일정부터 표시됩니다",
+        dash_allDay:"종일",dash_noLocation:"장소 미정",dash_noUpcoming:"다가오는 일정이 없습니다.",
+        cal_collapse:"접기",cal_more:"더보기",
+        cal_title:(y,m)=>`${y}년 ${m+1}월`,
+        cal_create_title:"일정 등록",cal_create_leave:"◷ 연차",cal_create_trip:"✈ 출장",cal_create_cancel:"취소",
+        leave_h1:"연차 등록/조회",leave_sub:"연차를 신청하고 사용 내역을 조회하세요.",
+        leave_registerBtn:"＋ 연차 등록",leave_totalGranted:"총 부여 연차",leave_used:"사용 완료",
+        leave_scheduled:"사용 예정 연차",leave_remaining:"잔여 연차",leave_history:"연차 이력",
+        leave_allTypes:"전체 종류",leave_allMonths:"전체 월",leave_searchPlaceholder:"사유 검색",
+        leave_allStatus:"전체 상태",leave_statusUpcoming:"사용 예정",leave_statusPast:"사용 완료",
+        leave_excel:"↓ 엑셀",
+        leave_th_type:"휴가 종류",leave_th_period:"기간",leave_th_days:"사용 일수",
+        leave_th_reason:"사유",leave_th_status:"상태",leave_th_manage:"관리",
+        lt_annual:"연차",lt_halfAM:"오전 반차",lt_halfPM:"오후 반차",lt_special:"특별휴가",
+        lt_unpaidSick:"무급병가",lt_paidSick:"유급병가",lt_checkup:"건강검진",
+        lt_healthLeave:"건강휴가",lt_official:"공가",lt_noDeduct:"차감 없음",
+        trip_h1:"출장 등록/조회",trip_sub:"출장을 등록하고 이력을 조회하세요.",
+        trip_registerBtn:"＋ 출장 등록",trip_yearTotal:"올해 총 출장",trip_monthTotal:"이번달 출장",
+        trip_todayTotal:"오늘 출장",trip_history:"출장 이력",
+        trip_searchPlaceholder:"출장지, 동행자, Order# 검색",
+        trip_th_area:"국내/해외",trip_th_dest:"출장지",trip_th_outwork:"외근",trip_th_period:"기간",
+        trip_th_creator:"등록자",trip_th_companions:"동행자",trip_th_orderNo:"Order NO#",
+        trip_th_orderContent:"Order 내용",trip_th_desc:"출장 내용",trip_th_status:"상태",trip_th_manage:"관리",
+        status_done:"사용 완료",status_upcoming:"사용 예정",status_tripDone:"완료",status_tripUpcoming:"예정",
+        status_retired:"퇴사",status_active:"재직",
+        type_trip:"출장",type_leave:"연차",type_other:"기타",type_outwork:"외근",type_me:"나",
+        act_edit:"수정",act_delete:"삭제",act_view:"조회",act_cancel:"취소",act_save:"저장하기",act_close:"닫기",
+        gen_days:"일",gen_people:"명",gen_count:"건",gen_pct:"%",
+        gen_noData:"조건에 맞는 내역이 없습니다.",
+        gen_total:"총",gen_noLeave:"휴가 인원 없음",gen_noTrip:"출장 인원 없음",gen_allDept:"전체 부서",
+        gen_noMonthPlan:"이번 달 예정 없음",
+        adminTrip_h1:"전사 출장 현황",adminTrip_sub:"직원별 출장 이력을 조회하세요.",
+        adminTrip_excelBtn:"엑셀 다운로드",adminTrip_total:"전체 출장",adminTrip_month:"이번 달 출장",
+        adminTrip_empCount:"출장 인원",adminTrip_today:"오늘 출장",
+        adminTrip_allDept:"전체 부서",adminTrip_searchPlaceholder:"이름 검색",
+        adminTrip_th_emp:"직원",adminTrip_th_dept:"부서",adminTrip_th_count:"건수",adminTrip_th_detail:"상세",
+        adminTrip_selectEmp:"직원을 조회해주세요.",
+        profile_h1:"내 정보",profile_sub:"회사 비상 연락과 인사 관리에 필요한 정보를 입력하세요.",
+        profile_phone:"전화번호",profile_birth:"생년월일",profile_address:"주소",
+        profile_addressPlaceholder:"주소 입력",profile_emergency:"비상 연락처",
+        profile_emergencyName:"이름",profile_emergencyRelation:"관계 선택",profile_saveBtn:"내 정보 저장",
+        team_h1:"전사 연차 현황",team_sub:"직원별 연차 사용률과 잔여 일수를 확인하세요.",
+        team_totalEmp:"전체 직원",team_avgRate:"평균 사용률",team_todayLeave:"오늘 휴가",
+        team_searchPlaceholder:"이름 검색",team_showRetired:"퇴사자 포함",
+        team_th_name:"이름",team_th_dept:"부서",team_th_used:"사용",team_th_remaining:"잔여",
+        team_th_total:"총",team_th_detail:"상세",team_selectEmp:"직원을 조회해주세요.",
+        emp_h1:"직원 관리",emp_sub:"직원 등록, 수정, 퇴사 처리를 합니다.",
+        emp_csvBtn:"↓ CSV 다운로드",emp_addTitle:"직원 추가",
+        emp_searchPlaceholder:"이름, 부서 또는 이메일 검색",
+        emp_th_name:"이름",emp_th_dept:"부서",emp_th_position:"직급",emp_th_email:"이메일",
+        emp_th_role:"권한",emp_th_status:"상태",emp_th_notify:"근태통보",emp_th_manage:"관리",
+        emp_th_phone:"전화번호",emp_th_birth:"생년월일",emp_th_address:"주소",
+        emp_th_emergencyName:"비상 연락처 이름",emp_th_emergencyRelation:"관계",emp_th_emergencyPhone:"비상 연락처",
+        holiday_h1:"공휴일 관리",holiday_sub:"올해와 내년도 임시 공휴일을 추가, 수정, 삭제하세요.",
+        holiday_date:"날짜",holiday_name:"공휴일명",holiday_saveBtn:"저장",
+        holiday_th_year:"연도",holiday_th_date:"날짜",holiday_th_name:"공휴일명",holiday_th_manage:"관리",
+        modal_leave_title:"휴 가 신 청 서",modal_leave_typeLabel:"휴가 종류",
+        modal_leave_daysLabel:"차감 일수",modal_leave_autoLabel:"자동",
+        modal_leave_startLabel:"시작일",modal_leave_endLabel:"종료일",
+        modal_leave_reasonLabel:"사유",modal_leave_reasonPlaceholder:"예: 개인 일정, 가족 행사",
+        modal_leave_cancelBtn:"취소",modal_leave_saveBtn:"저장하기",
+        modal_pw_title:"비밀번호 변경",modal_pw_current:"현재 비밀번호",
+        modal_pw_new:"새 비밀번호",modal_pw_confirm:"새 비밀번호 확인",
+        modal_pw_cancelBtn:"취소",modal_pw_changeBtn:"변경하기",
+        modal_trip_domestic:"국내",modal_trip_overseas:"해외",modal_trip_outwork:"외근",
+        months:["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"],
+        rel_spouse:"배우자",rel_father:"부",rel_mother:"모",rel_child:"자녀",
+        rel_sibling:"형제자매",rel_grandparent:"조부모",rel_friend:"친구",rel_relative:"친척",rel_other:"기타",
+        detail_type:"일정 종류",detail_period:"기간",detail_startTime:"시작 시간",
+        detail_location:"장소",detail_deductDays:"차감 일수",detail_reason:"사유",
+        detail_mailTarget:"메일 대상",detail_noMail:"메일 알림 없음",
+        detail_creator:"등록자",detail_outworkLabel:"외근 여부",detail_area:"국내/해외",
+        detail_dest:"행선지",detail_companions:"동행 직원",detail_orderNo:"Order NO#",
+        detail_orderContent:"Order 내용",detail_tripDesc:"출장 내용",
+        detail_outworkYes:"외근",detail_outworkNo:"해당 없음",
+        detail_deleteBtn:"삭제",detail_editBtn:"수정",detail_closeBtn:"닫기",
+        modal_trip_dest_label:"출장지",modal_trip_dest_placeholder:"행선지 입력",
+        modal_trip_outwork_chk:"외근",modal_trip_start:"시작일",modal_trip_end:"종료일",
+        modal_trip_companion_label:"동행자",modal_trip_companion_optional:"(선택)",
+        modal_trip_companion_placeholder:"이름 입력 후 선택",
+        modal_trip_orderNo_placeholder:"오더 번호",modal_trip_po_label:"Order 내용",modal_trip_po_placeholder:"오더 내용",
+        modal_trip_desc_label:"출장 내용",modal_trip_desc_placeholder:"출장 목적 및 주요 내용",
+        modal_trip_notify:"메일로 통보",modal_trip_cancel:"취소",modal_trip_submit:"등록",modal_trip_update:"수정",
+        lf_dept:"소\xa0\xa0\xa0속",lf_position:"직\xa0\xa0\xa0위",lf_name:"성\xa0\xa0\xa0명",
+        lf_type:"휴가 종류",lf_reason:"휴가 사유",lf_period:"휴가 기간",
+        lf_emergency:"비상연락처",lf_notes:"기타 사항",
+        lf_submit_text:"위와 같이 휴가를 신청하오니 승인하여 주시기 바랍니다.",
+        lf_notify:"메일로 통보",lf_cancel:"취소",lf_submit_btn:"신청서 제출",lf_reason_placeholder:"개인 사유",
+        ls_title:"연차 신청서 제출",ls_sub:"아래 내용을 확인하고 통보 대상을 선택 후 제출하세요.",
+        ls_notify:"통보",ls_notify_sub:"(체크된 분께 알림)",
+        ls_cancel:"취소",ls_download:"↓ 신청서 저장",ls_confirm:"제출 완료",
+        lc_title:"연차 신청서를 최종 제출하시겠습니까?",lc_no:"아니오",lc_yes:"예, 제출",
+        err_lockedLeaveEdit:"지난 연차는 수정할 수 없습니다. 관리자에 문의하세요.",
+        err_lockedLeaveDelete:"지난 연차는 삭제할 수 없습니다. 관리자에 문의하세요.",
+        toast_leaveDeleted:"연차가 삭제되었습니다.",toast_leaveEventDeleted:"연차 일정이 삭제되었습니다.",
+        toast_leaveRegistered:"연차가 등록되었습니다.",toast_leaveEdited:"연차 일정이 수정되었습니다.",
+        toast_leaveSubmitted:"연차 신청서가 제출되었습니다.",toast_leaveApplied:"연차 신청이 완료됐습니다.",
+        toast_tripDeleted:"출장이 삭제되었습니다.",toast_tripEdited:"출장이 수정되었습니다.",toast_tripRegistered:"출장이 등록되었습니다.",
+        toast_eventDeleted:"일정이 삭제되었습니다.",toast_eventEdited:"일정이 수정되었습니다.",toast_eventRegistered:"공유 일정이 등록되었습니다.",
+        toast_profileSaved:"개인 정보가 저장되었습니다.",toast_pwChanged:"비밀번호가 변경되었습니다.",
+        toast_pwInitial:"초기 비밀번호를 본인 비밀번호로 변경해 주세요.",
+        toast_onlyCreatorOrAdmin:"등록자 본인 또는 관리자만 삭제할 수 있습니다.",
+        toast_adminOnly:"관리자만 확인할 수 있는 메뉴입니다.",
+        toast_tripRequired:"출장지와 기간을 입력하세요.",
+        toast_endBeforeStart:"종료일은 시작일보다 빠를 수 없습니다.",
+        toast_pastLeave:"오늘 이전 날짜에는 새 연차를 등록할 수 없습니다.",
+        toast_pastLeaveEdit:"오늘 이전 날짜 연차는 수정할 수 없습니다.",
+        toast_farDate:"너무 먼 날짜에는 연차를 입력할 수 없습니다.",
+        toast_noWorkdays:"선택한 기간에 차감할 영업일이 없습니다.",
+        toast_pwMismatch:"새 비밀번호가 서로 일치하지 않습니다.",toast_pwTooShort:"비밀번호는 8자 이상이어야 합니다.",
+        err_pastEvent_title:"과거 일정",err_pastEvent_msg:"과거일자는 수정/삭제할 수 없습니다.",
+        err_noPermission_title:"수정/삭제 불가",err_noPermission_msg:"다른 직원이 입력한 이벤트는 수정/삭제가 불가능합니다.",
+        err_noEditOther_title:"수정 불가",err_noEditOther_msg:"기타 이벤트는 더 이상 수정할 수 없습니다.",
+        err_noDeleteOther_title:"삭제 불가",err_noDeleteOther_msg:"기타 이벤트는 더 이상 삭제할 수 없습니다.",
+        err_yearCross_title:"연도 오류",
+        err_yearCrossLeave_msg:(s,e)=>`연차 기간이 연도를 넘길 수 없습니다.\n${s}년과 ${e}년을 각각 나누어 입력해 주세요.`,
+        err_yearCrossTrip_msg:(s,e)=>`출장 기간이 연도를 넘길 수 없습니다.\n${s}년과 ${e}년을 각각 나누어 입력해 주세요.`,
+        err_tripDup_title:"출장 중복",err_tripDup_msg:n=>`${n}님은 해당 기간에 이미 등록된 출장이 있습니다.\n(등록자 또는 동행자로 포함된 출장)`,
+        err_companionDup_title:"동행자 출장 중복",err_companionDup_msg:n=>`동행자 ${n}님은 해당 기간에 이미 등록된 출장이 있습니다.\n(등록자 또는 동행자로 포함된 출장을 확인해 주세요)`,
+        err_leaveDup_title:"연차 중복",err_leaveDup_msg:n=>`${n}님의 해당 기간에 이미 등록된 연차가 있습니다.`,
+        err_leaveDup2_msg:"이미 입력되어있는 연차가 있습니다",
+        err_leaveLimit_title:"연차 한도 초과",err_leaveLimit_msg:d=>`사용 완료 연차와 사용 예정 연차의 합계가 총 부여 연차 ${d}일을 초과하여 입력할 수 없습니다.`,
+        err_reasonRequired:tp=>`${tp} 선택 시 사유를 입력해 주세요.`,
+        err_lf_period:"휴가 기간을 확인해 주세요.",err_lf_yearCross:(s,e)=>`연차 기간이 연도를 넘길 수 없습니다. ${s}년과 ${e}년을 각각 나누어 입력해 주세요.`,
+        err_lf_past:"오늘 이전 날짜에는 연차를 신청할 수 없습니다.",err_lf_farDate:"너무 먼 날짜에는 연차를 신청할 수 없습니다.",
+        err_lf_dup:"이미 입력된 연차가 있습니다.",err_lf_noWorkdays:"선택한 기간에 차감할 영업일이 없습니다.",
+        err_lf_limit:d=>`총 부여 연차 ${d}일을 초과합니다.`,err_lf_reason:tp=>`${tp} 선택 시 사유를 입력해 주세요.`,
+        err_unknownUser_title:"등록되지 않은 아이디입니다",err_unknownUser_msg:"회사 직원 명단에 등록된 아이디인지 확인해 주세요.",
+        err_retired_title:"접속 불가",err_retired_msg:"퇴사 처리된 계정입니다. 관리자에게 문의하세요.",
+        err_wrongPw_title:"비밀번호가 틀렸습니다",err_wrongPw_msg:"비밀번호 초기화는 관리자에게 문의하세요.",
+        err_wrongPwCurrent_msg:"현재 비밀번호를 다시 확인해 주세요.",
+        err_serverError_title:"서버 연결 오류",err_serverError_msg:"Supabase 연결을 확인해 주세요.",
+        locale:"ko-KR",
+      },
+      en:{
+        nav_dashboard:"Shared Calendar",nav_leave:"Leave",nav_trips:"Business Trips",
+        nav_admin:"Admin",nav_team:"Company Leave",nav_tripsAdmin:"Company Trips",
+        nav_employees:"Employees",nav_holidays:"Holidays",side_usage:"My Leave Usage",
+        topbar_myInfo:"My Info",topbar_changePw:"Change Password",topbar_logout:"Logout",
+        login_subtitle:"Sign in with your company email.",
+        login_idLabel:"Username",login_idPlaceholder:"Username",
+        login_pwLabel:"Password",login_pwPlaceholder:"Enter password",
+        login_btn:"Sign In",login_help:"Contact admin to reset password",
+        dash_h1:"Have a great day!",dash_sub:"Check your team's schedule and leave at a glance.",
+        dash_myLeave:"My Remaining Leave",dash_teamLeave:"Team Leave This Month",dash_monthTrip:"Trips This Month",
+        dash_today:"Today",dash_filterLabel:"Filter",dash_leaveFilter:"Leave",dash_tripFilter:"Trip",
+        dash_weekdays:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],
+        dash_upcoming:"Upcoming Events",dash_upcomingSub:"Sorted by nearest date",
+        dash_allDay:"All Day",dash_noLocation:"No location",dash_noUpcoming:"No upcoming events.",
+        cal_collapse:"Collapse",cal_more:"more",
+        cal_title:(y,m)=>`${y} / ${m+1}`,
+        cal_create_title:"Add Event",cal_create_leave:"◷ Leave",cal_create_trip:"✈ Trip",cal_create_cancel:"Cancel",
+        leave_h1:"Leave Management",leave_sub:"Apply for leave and view your history.",
+        leave_registerBtn:"＋ Add Leave",leave_totalGranted:"Total Leave Granted",leave_used:"Used",
+        leave_scheduled:"Scheduled",leave_remaining:"Remaining",leave_history:"Leave History",
+        leave_allTypes:"All Types",leave_allMonths:"All Months",leave_searchPlaceholder:"Search reason",
+        leave_allStatus:"All Status",leave_statusUpcoming:"Upcoming",leave_statusPast:"Used",
+        leave_excel:"↓ Excel",
+        leave_th_type:"Type",leave_th_period:"Period",leave_th_days:"Days",
+        leave_th_reason:"Reason",leave_th_status:"Status",leave_th_manage:"Action",
+        lt_annual:"One day",lt_halfAM:"Half Day (AM)",lt_halfPM:"Half Day (PM)",
+        lt_special:"Special Leave",lt_unpaidSick:"Unpaid Sick",lt_paidSick:"Paid Sick",
+        lt_checkup:"Medical Checkup",lt_healthLeave:"Health Leave",lt_official:"Official Leave",
+        lt_noDeduct:"No deduction",
+        trip_h1:"Business Trip Management",trip_sub:"Register and view your business trips.",
+        trip_registerBtn:"＋ Add Trip",trip_yearTotal:"Trips This Year",trip_monthTotal:"Trips This Month",
+        trip_todayTotal:"Trips Today",trip_history:"Trip History",
+        trip_searchPlaceholder:"Search destination, companion, Order#",
+        trip_th_area:"Domestic/Overseas",trip_th_dest:"Destination",trip_th_outwork:"Offsite",trip_th_period:"Period",
+        trip_th_creator:"Registered By",trip_th_companions:"Companions",trip_th_orderNo:"Order NO#",
+        trip_th_orderContent:"Order Details",trip_th_desc:"Trip Details",trip_th_status:"Status",trip_th_manage:"Action",
+        status_done:"Used",status_upcoming:"Upcoming",status_tripDone:"Done",status_tripUpcoming:"Upcoming",
+        status_retired:"Former",status_active:"Active",
+        type_trip:"Trip",type_leave:"Leave",type_other:"Other",type_outwork:"Offsite",type_me:"Me",
+        act_edit:"Edit",act_delete:"Delete",act_view:"View",act_cancel:"Cancel",act_save:"Save",act_close:"Close",
+        gen_days:"d",gen_people:"",gen_count:"",gen_pct:"%",
+        gen_noData:"No records found.",
+        gen_total:"Total",gen_noLeave:"No one on leave",gen_noTrip:"No one on trip",gen_allDept:"All Departments",
+        gen_noMonthPlan:"No plans this month",
+        adminTrip_h1:"Company Trip Overview",adminTrip_sub:"View trip history by employee.",
+        adminTrip_excelBtn:"Download Excel",adminTrip_total:"Total Trips",adminTrip_month:"Trips This Month",
+        adminTrip_empCount:"Employees on Trip",adminTrip_today:"Trips Today",
+        adminTrip_allDept:"All Departments",adminTrip_searchPlaceholder:"Search by name",
+        adminTrip_th_emp:"Employee",adminTrip_th_dept:"Dept",adminTrip_th_count:"Count",adminTrip_th_detail:"Detail",
+        adminTrip_selectEmp:"Please select an employee.",
+        profile_h1:"My Profile",profile_sub:"Enter emergency contact and personal info.",
+        profile_phone:"Phone Number",profile_birth:"Date of Birth",profile_address:"Address",
+        profile_addressPlaceholder:"Enter address",profile_emergency:"Emergency Contact",
+        profile_emergencyName:"Name",profile_emergencyRelation:"Select Relation",profile_saveBtn:"Save Profile",
+        team_h1:"Company Leave Overview",team_sub:"Check leave usage and remaining days by employee.",
+        team_totalEmp:"Total Employees",team_avgRate:"Avg. Usage Rate",team_todayLeave:"On Leave Today",
+        team_searchPlaceholder:"Search by name",team_showRetired:"Include Former Employees",
+        team_th_name:"Name",team_th_dept:"Dept",team_th_used:"Used",team_th_remaining:"Left",
+        team_th_total:"Total",team_th_detail:"Detail",team_selectEmp:"Please select an employee.",
+        emp_h1:"Employee Management",emp_sub:"Register, edit, and manage employees.",
+        emp_csvBtn:"↓ Download CSV",emp_addTitle:"Add Employee",
+        emp_searchPlaceholder:"Search by name, dept, or email",
+        emp_th_name:"Name",emp_th_dept:"Dept",emp_th_position:"Position",emp_th_email:"Email",
+        emp_th_role:"Role",emp_th_status:"Status",emp_th_notify:"Notify",emp_th_manage:"Action",
+        emp_th_phone:"Phone",emp_th_birth:"Birth",emp_th_address:"Address",
+        emp_th_emergencyName:"Emergency Name",emp_th_emergencyRelation:"Relation",emp_th_emergencyPhone:"Emergency Phone",
+        holiday_h1:"Holiday Management",holiday_sub:"Add, edit, or delete public holidays.",
+        holiday_date:"Date",holiday_name:"Holiday Name",holiday_saveBtn:"Save",
+        holiday_th_year:"Year",holiday_th_date:"Date",holiday_th_name:"Holiday",holiday_th_manage:"Action",
+        modal_leave_title:"LEAVE APPLICATION",modal_leave_typeLabel:"Leave Type",
+        modal_leave_daysLabel:"Days Deducted",modal_leave_autoLabel:"auto",
+        modal_leave_startLabel:"Start Date",modal_leave_endLabel:"End Date",
+        modal_leave_reasonLabel:"Reason",modal_leave_reasonPlaceholder:"e.g. Personal, Family event",
+        modal_leave_cancelBtn:"Cancel",modal_leave_saveBtn:"Save",
+        modal_pw_title:"Change Password",modal_pw_current:"Current Password",
+        modal_pw_new:"New Password",modal_pw_confirm:"Confirm New Password",
+        modal_pw_cancelBtn:"Cancel",modal_pw_changeBtn:"Change",
+        modal_trip_domestic:"Domestic",modal_trip_overseas:"Overseas",modal_trip_outwork:"Offsite",
+        months:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+        rel_spouse:"Spouse",rel_father:"Father",rel_mother:"Mother",rel_child:"Child",
+        rel_sibling:"Sibling",rel_grandparent:"Grandparent",rel_friend:"Friend",rel_relative:"Relative",rel_other:"Other",
+        detail_type:"Event Type",detail_period:"Period",detail_startTime:"Start Time",
+        detail_location:"Location",detail_deductDays:"Days Deducted",detail_reason:"Reason",
+        detail_mailTarget:"Mail Recipients",detail_noMail:"No email notification",
+        detail_creator:"Registered by",detail_outworkLabel:"Offsite Work",detail_area:"Domestic/Overseas",
+        detail_dest:"Destination",detail_companions:"Companions",detail_orderNo:"Order NO#",
+        detail_orderContent:"Order Details",detail_tripDesc:"Trip Details",
+        detail_outworkYes:"Offsite",detail_outworkNo:"N/A",
+        detail_deleteBtn:"Delete",detail_editBtn:"Edit",detail_closeBtn:"Close",
+        modal_trip_dest_label:"Destination",modal_trip_dest_placeholder:"Enter destination",
+        modal_trip_outwork_chk:"Offsite",modal_trip_start:"Start Date",modal_trip_end:"End Date",
+        modal_trip_companion_label:"Companions",modal_trip_companion_optional:"(optional)",
+        modal_trip_companion_placeholder:"Type name to search",
+        modal_trip_orderNo_placeholder:"Order number",modal_trip_po_label:"Order Content",modal_trip_po_placeholder:"Order content",
+        modal_trip_desc_label:"Trip Details",modal_trip_desc_placeholder:"Purpose and main activities",
+        modal_trip_notify:"Notify by email",modal_trip_cancel:"Cancel",modal_trip_submit:"Register",modal_trip_update:"Update",
+        lf_dept:"Department",lf_position:"Position",lf_name:"Name",
+        lf_type:"Leave Type",lf_reason:"Reason",lf_period:"Period",
+        lf_emergency:"Emergency Contact",lf_notes:"Other Notes",
+        lf_submit_text:"I hereby request approval for the leave as stated above.",
+        lf_notify:"Email Notification",lf_cancel:"Cancel",lf_submit_btn:"Submit",lf_reason_placeholder:"Personal reason",
+        ls_title:"Leave Application Submission",ls_sub:"Review the details, select notification recipients, and submit.",
+        ls_notify:"Notify",ls_notify_sub:"(checked recipients will be alerted)",
+        ls_cancel:"Cancel",ls_download:"↓ Save Form",ls_confirm:"Submit",
+        lc_title:"Submit leave application?",lc_no:"No",lc_yes:"Yes, Submit",
+        err_lockedLeaveEdit:"Past leaves cannot be edited. Please contact admin.",
+        err_lockedLeaveDelete:"Past leaves cannot be deleted. Please contact admin.",
+        toast_leaveDeleted:"Leave deleted.",toast_leaveEventDeleted:"Leave deleted.",
+        toast_leaveRegistered:"Leave registered.",toast_leaveEdited:"Leave updated.",
+        toast_leaveSubmitted:"Leave form submitted.",toast_leaveApplied:"Leave application complete.",
+        toast_tripDeleted:"Trip deleted.",toast_tripEdited:"Trip updated.",toast_tripRegistered:"Trip registered.",
+        toast_eventDeleted:"Event deleted.",toast_eventEdited:"Event updated.",toast_eventRegistered:"Shared event registered.",
+        toast_profileSaved:"Profile saved.",toast_pwChanged:"Password changed.",
+        toast_pwInitial:"Please change your initial password.",
+        toast_onlyCreatorOrAdmin:"Only the creator or admin can delete this.",
+        toast_adminOnly:"Admin only.",
+        toast_tripRequired:"Please enter destination and dates.",
+        toast_endBeforeStart:"End date cannot be before start date.",
+        toast_pastLeave:"Cannot register leave for past dates.",
+        toast_pastLeaveEdit:"Cannot edit leave for past dates.",
+        toast_farDate:"Cannot register leave for dates too far ahead.",
+        toast_noWorkdays:"No working days in the selected period.",
+        toast_pwMismatch:"Passwords do not match.",toast_pwTooShort:"Password must be at least 8 characters.",
+        err_pastEvent_title:"Past Event",err_pastEvent_msg:"Past events cannot be edited or deleted.",
+        err_noPermission_title:"Not Permitted",err_noPermission_msg:"You cannot edit or delete events created by others.",
+        err_noEditOther_title:"Cannot Edit",err_noEditOther_msg:"This event can no longer be edited.",
+        err_noDeleteOther_title:"Cannot Delete",err_noDeleteOther_msg:"This event can no longer be deleted.",
+        err_yearCross_title:"Year Error",
+        err_yearCrossLeave_msg:(s,e)=>`Leave cannot span two calendar years.\nPlease submit ${s} and ${e} separately.`,
+        err_yearCrossTrip_msg:(s,e)=>`Trip cannot span two calendar years.\nPlease submit ${s} and ${e} separately.`,
+        err_tripDup_title:"Duplicate Trip",err_tripDup_msg:n=>`${n} already has a trip for this period.\n(as creator or companion)`,
+        err_companionDup_title:"Companion Conflict",err_companionDup_msg:n=>`Companion ${n} already has a trip for this period.\n(Check trips as creator or companion)`,
+        err_leaveDup_title:"Duplicate Leave",err_leaveDup_msg:n=>`${n} already has leave registered for this period.`,
+        err_leaveDup2_msg:"Duplicate leave entry found.",
+        err_leaveLimit_title:"Leave Limit Exceeded",err_leaveLimit_msg:d=>`Total leave usage exceeds the granted ${d} days.`,
+        err_reasonRequired:tp=>`Please enter a reason when selecting ${tp}.`,
+        err_lf_period:"Please check the leave period.",err_lf_yearCross:(s,e)=>`Leave cannot span two calendar years. Please submit ${s} and ${e} separately.`,
+        err_lf_past:"Cannot apply for leave on past dates.",err_lf_farDate:"Cannot apply for leave on dates too far ahead.",
+        err_lf_dup:"Duplicate leave entry found.",err_lf_noWorkdays:"No working days in the selected period.",
+        err_lf_limit:d=>`Exceeds the granted ${d} days.`,err_lf_reason:tp=>`Please enter a reason when selecting ${tp}.`,
+        err_unknownUser_title:"Unregistered ID",err_unknownUser_msg:"Please check if this is a registered company email.",
+        err_retired_title:"Access Denied",err_retired_msg:"This account has been deactivated. Please contact admin.",
+        err_wrongPw_title:"Wrong Password",err_wrongPw_msg:"Contact admin to reset your password.",
+        err_wrongPwCurrent_msg:"Please re-enter your current password.",
+        err_serverError_title:"Server Error",err_serverError_msg:"Please check your Supabase connection.",
+        locale:"en-US",
+      },
+      jp:{
+        nav_dashboard:"共有カレンダー",nav_leave:"休暇申請/照会",nav_trips:"出張申請/照会",
+        nav_admin:"管理者",nav_team:"全社休暇状況",nav_tripsAdmin:"全社出張状況",
+        nav_employees:"社員管理",nav_holidays:"祝日管理",side_usage:"私の休暇使用率",
+        topbar_myInfo:"自分の情報",topbar_changePw:"パスワード変更",topbar_logout:"ログアウト",
+        login_subtitle:"会社のメールアカウントでサインインしてください。",
+        login_idLabel:"ユーザーID",login_idPlaceholder:"ユーザーID",
+        login_pwLabel:"パスワード",login_pwPlaceholder:"パスワードを入力",
+        login_btn:"ログイン",login_help:"パスワードのリセットは管理者にお問い合わせください",
+        dash_h1:"今日も良い一日を。",dash_sub:"チームの休暇と重要なスケジュールを一目で確認してください。",
+        dash_myLeave:"残り休暇日数",dash_teamLeave:"今月のチーム休暇",dash_monthTrip:"今月の出張",
+        dash_today:"今日",dash_filterLabel:"種別フィルター",dash_leaveFilter:"休暇",dash_tripFilter:"出張",
+        dash_weekdays:["日","月","火","水","木","金","土"],
+        dash_upcoming:"今後の予定",dash_upcomingSub:"直近の予定から表示されます",
+        dash_allDay:"終日",dash_noLocation:"場所未定",dash_noUpcoming:"今後の予定はありません。",
+        cal_collapse:"折りたたむ",cal_more:"もっと見る",
+        cal_title:(y,m)=>`${y}年${m+1}月`,
+        cal_create_title:"予定登録",cal_create_leave:"◷ 休暇",cal_create_trip:"✈ 出張",cal_create_cancel:"キャンセル",
+        leave_h1:"休暇申請/照会",leave_sub:"休暇を申請し、使用履歴を確認してください。",
+        leave_registerBtn:"＋ 休暇登録",leave_totalGranted:"付与休暇日数",leave_used:"使用済み",
+        leave_scheduled:"予定",leave_remaining:"残り",leave_history:"休暇履歴",
+        leave_allTypes:"全種類",leave_allMonths:"全月",leave_searchPlaceholder:"理由で検索",
+        leave_allStatus:"全ステータス",leave_statusUpcoming:"予定",leave_statusPast:"使用済み",
+        leave_excel:"↓ Excel",
+        leave_th_type:"休暇種類",leave_th_period:"期間",leave_th_days:"日数",
+        leave_th_reason:"理由",leave_th_status:"ステータス",leave_th_manage:"操作",
+        lt_annual:"年次有給休暇",lt_halfAM:"午前半休",lt_halfPM:"午後半休",lt_special:"特別休暇",
+        lt_unpaidSick:"無給病気休暇",lt_paidSick:"有給病気休暇",lt_checkup:"健康診断",
+        lt_healthLeave:"健康休暇",lt_official:"公的休暇",lt_noDeduct:"控除なし",
+        trip_h1:"出張申請/照会",trip_sub:"出張を登録し、履歴を確認してください。",
+        trip_registerBtn:"＋ 出張登録",trip_yearTotal:"今年の出張合計",trip_monthTotal:"今月の出張",
+        trip_todayTotal:"本日の出張",trip_history:"出張履歴",
+        trip_searchPlaceholder:"出張先、同行者、Order#で検索",
+        trip_th_area:"国内/海外",trip_th_dest:"出張先",trip_th_outwork:"外勤",trip_th_period:"期間",
+        trip_th_creator:"登録者",trip_th_companions:"同行者",trip_th_orderNo:"Order NO#",
+        trip_th_orderContent:"Order内容",trip_th_desc:"出張内容",trip_th_status:"ステータス",trip_th_manage:"操作",
+        status_done:"使用済み",status_upcoming:"予定",status_tripDone:"完了",status_tripUpcoming:"予定",
+        status_retired:"退職",status_active:"在職",
+        type_trip:"出張",type_leave:"休暇",type_other:"その他",type_outwork:"外勤",type_me:"私",
+        act_edit:"編集",act_delete:"削除",act_view:"照会",act_cancel:"キャンセル",act_save:"保存",act_close:"閉じる",
+        gen_days:"日",gen_people:"人",gen_count:"件",gen_pct:"%",
+        gen_noData:"該当データがありません。",
+        gen_total:"合計",gen_noLeave:"休暇者なし",gen_noTrip:"出張者なし",gen_allDept:"全部署",
+        gen_noMonthPlan:"今月の予定なし",
+        adminTrip_h1:"全社出張状況",adminTrip_sub:"社員別出張履歴を確認してください。",
+        adminTrip_excelBtn:"Excelダウンロード",adminTrip_total:"全出張",adminTrip_month:"今月の出張",
+        adminTrip_empCount:"出張者数",adminTrip_today:"本日の出張",
+        adminTrip_allDept:"全部署",adminTrip_searchPlaceholder:"名前で検索",
+        adminTrip_th_emp:"社員",adminTrip_th_dept:"部署",adminTrip_th_count:"件数",adminTrip_th_detail:"詳細",
+        adminTrip_selectEmp:"社員を選択してください。",
+        profile_h1:"自分の情報",profile_sub:"緊急連絡先と人事管理に必要な情報を入力してください。",
+        profile_phone:"電話番号",profile_birth:"生年月日",profile_address:"住所",
+        profile_addressPlaceholder:"住所を入力",profile_emergency:"緊急連絡先",
+        profile_emergencyName:"氏名",profile_emergencyRelation:"関係を選択",profile_saveBtn:"情報を保存",
+        team_h1:"全社休暇状況",team_sub:"社員別の休暇使用率と残日数を確認してください。",
+        team_totalEmp:"全社員数",team_avgRate:"平均使用率",team_todayLeave:"本日休暇中",
+        team_searchPlaceholder:"名前で検索",team_showRetired:"退職者を含む",
+        team_th_name:"氏名",team_th_dept:"部署",team_th_used:"使用",team_th_remaining:"残り",
+        team_th_total:"合計",team_th_detail:"詳細",team_selectEmp:"社員を選択してください。",
+        emp_h1:"社員管理",emp_sub:"社員の登録、編集、退職処理を行います。",
+        emp_csvBtn:"↓ CSVダウンロード",emp_addTitle:"社員追加",
+        emp_searchPlaceholder:"氏名、部署、またはメールで検索",
+        emp_th_name:"氏名",emp_th_dept:"部署",emp_th_position:"役職",emp_th_email:"メール",
+        emp_th_role:"権限",emp_th_status:"ステータス",emp_th_notify:"通知",emp_th_manage:"操作",
+        emp_th_phone:"電話番号",emp_th_birth:"生年月日",emp_th_address:"住所",
+        emp_th_emergencyName:"緊急連絡先氏名",emp_th_emergencyRelation:"関係",emp_th_emergencyPhone:"緊急連絡先電話",
+        holiday_h1:"祝日管理",holiday_sub:"今年と来年の臨時祝日を追加・編集・削除してください。",
+        holiday_date:"日付",holiday_name:"祝日名",holiday_saveBtn:"保存",
+        holiday_th_year:"年",holiday_th_date:"日付",holiday_th_name:"祝日名",holiday_th_manage:"操作",
+        modal_leave_title:"休 暇 申 請 書",modal_leave_typeLabel:"休暇種類",
+        modal_leave_daysLabel:"控除日数",modal_leave_autoLabel:"自動",
+        modal_leave_startLabel:"開始日",modal_leave_endLabel:"終了日",
+        modal_leave_reasonLabel:"理由",modal_leave_reasonPlaceholder:"例：個人用事、家族行事",
+        modal_leave_cancelBtn:"キャンセル",modal_leave_saveBtn:"保存",
+        modal_pw_title:"パスワード変更",modal_pw_current:"現在のパスワード",
+        modal_pw_new:"新しいパスワード",modal_pw_confirm:"新しいパスワード（確認）",
+        modal_pw_cancelBtn:"キャンセル",modal_pw_changeBtn:"変更",
+        modal_trip_domestic:"国内",modal_trip_overseas:"海外",modal_trip_outwork:"外勤",
+        months:["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"],
+        rel_spouse:"配偶者",rel_father:"父",rel_mother:"母",rel_child:"子",
+        rel_sibling:"兄弟姉妹",rel_grandparent:"祖父母",rel_friend:"友人",rel_relative:"親戚",rel_other:"その他",
+        detail_type:"イベント種類",detail_period:"期間",detail_startTime:"開始時間",
+        detail_location:"場所",detail_deductDays:"控除日数",detail_reason:"理由",
+        detail_mailTarget:"メール宛先",detail_noMail:"メール通知なし",
+        detail_creator:"登録者",detail_outworkLabel:"外勤",detail_area:"国内/海外",
+        detail_dest:"出張先",detail_companions:"同行者",detail_orderNo:"Order NO#",
+        detail_orderContent:"Order内容",detail_tripDesc:"出張内容",
+        detail_outworkYes:"外勤",detail_outworkNo:"該当なし",
+        detail_deleteBtn:"削除",detail_editBtn:"編集",detail_closeBtn:"閉じる",
+        modal_trip_dest_label:"出張先",modal_trip_dest_placeholder:"行き先を入力",
+        modal_trip_outwork_chk:"外勤",modal_trip_start:"開始日",modal_trip_end:"終了日",
+        modal_trip_companion_label:"同行者",modal_trip_companion_optional:"（任意）",
+        modal_trip_companion_placeholder:"名前で検索",
+        modal_trip_orderNo_placeholder:"オーダー番号",modal_trip_po_label:"発注内容",modal_trip_po_placeholder:"オーダー内容",
+        modal_trip_desc_label:"出張内容",modal_trip_desc_placeholder:"出張目的と主な内容",
+        modal_trip_notify:"メールで通知",modal_trip_cancel:"キャンセル",modal_trip_submit:"登録",modal_trip_update:"更新",
+        lf_dept:"部\xa0\xa0\xa0署",lf_position:"役\xa0\xa0\xa0職",lf_name:"氏\xa0\xa0\xa0名",
+        lf_type:"休暇種別",lf_reason:"休暇理由",lf_period:"休暇期間",
+        lf_emergency:"緊急連絡先",lf_notes:"備考",
+        lf_submit_text:"上記の通り休暇を申請しますので、承認をお願いします。",
+        lf_notify:"メール通知",lf_cancel:"キャンセル",lf_submit_btn:"申請書提出",lf_reason_placeholder:"個人的な理由",
+        ls_title:"休暇申請書の提出",ls_sub:"内容を確認し、通知対象を選択して提出してください。",
+        ls_notify:"通知",ls_notify_sub:"（チェックした方に通知）",
+        ls_cancel:"キャンセル",ls_download:"↓ フォーム保存",ls_confirm:"提出完了",
+        lc_title:"休暇申請書を最終提出しますか？",lc_no:"いいえ",lc_yes:"はい、提出",
+        err_lockedLeaveEdit:"過去の休暇は修正できません。管理者にお問い合わせください。",
+        err_lockedLeaveDelete:"過去の休暇は削除できません。管理者にお問い合わせください。",
+        toast_leaveDeleted:"休暇が削除されました。",toast_leaveEventDeleted:"休暇が削除されました。",
+        toast_leaveRegistered:"休暇が登録されました。",toast_leaveEdited:"休暇が更新されました。",
+        toast_leaveSubmitted:"休暇申請書を提出しました。",toast_leaveApplied:"休暇申請が完了しました。",
+        toast_tripDeleted:"出張が削除されました。",toast_tripEdited:"出張が更新されました。",toast_tripRegistered:"出張が登録されました。",
+        toast_eventDeleted:"予定が削除されました。",toast_eventEdited:"予定が更新されました。",toast_eventRegistered:"共有予定が登録されました。",
+        toast_profileSaved:"プロフィールを保存しました。",toast_pwChanged:"パスワードが変更されました。",
+        toast_pwInitial:"初期パスワードを変更してください。",
+        toast_onlyCreatorOrAdmin:"登録者本人または管理者のみ削除できます。",
+        toast_adminOnly:"管理者のみアクセスできます。",
+        toast_tripRequired:"出張先と期間を入力してください。",
+        toast_endBeforeStart:"終了日は開始日より前にすることはできません。",
+        toast_pastLeave:"過去の日付に休暇を登録できません。",
+        toast_pastLeaveEdit:"過去の日付の休暇は修正できません。",
+        toast_farDate:"遠すぎる日付に休暇を入力できません。",
+        toast_noWorkdays:"選択した期間に営業日がありません。",
+        toast_pwMismatch:"新しいパスワードが一致しません。",toast_pwTooShort:"パスワードは8文字以上必要です。",
+        err_pastEvent_title:"過去の予定",err_pastEvent_msg:"過去の日付の予定は編集・削除できません。",
+        err_noPermission_title:"変更・削除不可",err_noPermission_msg:"他の従業員が入力した予定は変更・削除できません。",
+        err_noEditOther_title:"編集不可",err_noEditOther_msg:"このイベントは編集できません。",
+        err_noDeleteOther_title:"削除不可",err_noDeleteOther_msg:"このイベントは削除できません。",
+        err_yearCross_title:"年度エラー",
+        err_yearCrossLeave_msg:(s,e)=>`休暇期間が年をまたぐことはできません。\n${s}年と${e}年を分けて入力してください。`,
+        err_yearCrossTrip_msg:(s,e)=>`出張期間が年をまたぐことはできません。\n${s}年と${e}年を分けて入力してください。`,
+        err_tripDup_title:"出張重複",err_tripDup_msg:n=>`${n}さんはこの期間に既に出張が登録されています。\n(登録者または同行者として含む)`,
+        err_companionDup_title:"同行者出張重複",err_companionDup_msg:n=>`同行者${n}さんはこの期間に既に出張が登録されています。\n(登録者または同行者として含む出張をご確認ください)`,
+        err_leaveDup_title:"休暇重複",err_leaveDup_msg:n=>`${n}さんはこの期間に既に休暇が登録されています。`,
+        err_leaveDup2_msg:"既に入力された休暇があります。",
+        err_leaveLimit_title:"休暇限度超過",err_leaveLimit_msg:d=>`使用済みおよび予定の休暇合計が付与休暇${d}日を超えています。`,
+        err_reasonRequired:tp=>`${tp}選択時は理由を入力してください。`,
+        err_lf_period:"休暇期間をご確認ください。",err_lf_yearCross:(s,e)=>`休暇期間が年をまたぐことはできません。${s}年と${e}年を分けて入力してください。`,
+        err_lf_past:"過去の日付に休暇を申請できません。",err_lf_farDate:"遠すぎる日付には休暇を申請できません。",
+        err_lf_dup:"既に入力された休暇があります。",err_lf_noWorkdays:"選択した期間に営業日がありません。",
+        err_lf_limit:d=>`付与休暇${d}日を超えています。`,err_lf_reason:tp=>`${tp}選択時は理由を入力してください。`,
+        err_unknownUser_title:"未登録のID",err_unknownUser_msg:"会社の従業員名簿に登録されたIDかどうかご確認ください。",
+        err_retired_title:"アクセス不可",err_retired_msg:"退職処理されたアカウントです。管理者にお問い合わせください。",
+        err_wrongPw_title:"パスワードが違います",err_wrongPw_msg:"パスワードのリセットは管理者にお問い合わせください。",
+        err_wrongPwCurrent_msg:"現在のパスワードを再確認してください。",
+        err_serverError_title:"サーバー接続エラー",err_serverError_msg:"Supabase接続をご確認ください。",
+        locale:"ja-JP",
+      }
+    };
+    const t = key => (TRANSLATIONS[window._lang||"kr"][key]) ?? key;
+    function switchLang(lang) {
+      window._lang = lang;
+      document.querySelectorAll(".lang-btn").forEach(btn => btn.classList.toggle("active", btn.textContent === lang.toUpperCase()));
+      applyLang();
+    }
+    function applyLang() {
+      const L = TRANSLATIONS[window._lang||"kr"];
+      const set = (sel, val) => { const el = typeof sel==="string"?document.querySelector(sel):sel; if(el) el.textContent=val; };
+      const setH = (sel, val) => { const el = typeof sel==="string"?document.querySelector(sel):sel; if(el) el.innerHTML=val; };
+      const setP = (sel, attr, val) => { const el = typeof sel==="string"?document.querySelector(sel):sel; if(el) el[attr]=val; };
+      // Login
+      set(".login-box > p", L.login_subtitle);
+      set("label[for='loginId']", L.login_idLabel);
+      setP("#loginId","placeholder",L.login_idPlaceholder);
+      set("label[for='loginPassword']", L.login_pwLabel);
+      setP("#loginPassword","placeholder",L.login_pwPlaceholder);
+      set("#loginForm .primary", L.login_btn);
+      const helpEl=document.querySelector(".login-help"); if(helpEl) helpEl.firstChild.textContent=L.login_help;
+      // Sidebar nav
+      const navPageMap = {dashboard:"nav_dashboard",leave:"nav_leave",trips:"nav_trips",team:"nav_team","trips-admin":"nav_tripsAdmin",employees:"nav_employees",holidays:"nav_holidays"};
+      document.querySelectorAll(".nav button[data-page]").forEach(btn=>{
+        const key=navPageMap[btn.dataset.page]; if(!key) return;
+        const icon=btn.querySelector("span"); if(icon) { btn.textContent=""; btn.appendChild(icon); btn.appendChild(document.createTextNode(" "+L[key])); }
+      });
+      set(".nav-section-label.admin-only", L.nav_admin);
+      set(".side-card p", L.side_usage);
+      // Topbar
+      set("button[data-page-go='profile']", L.topbar_myInfo);
+      set("button[data-open='passwordModal']", L.topbar_changePw);
+      set("#logoutBtn", L.topbar_logout);
+      // Dashboard
+      const greetEl=document.getElementById("greetingText");
+      if(greetEl&&currentUser)greetEl.textContent=`Good Morning, ${dispName(currentUser)||currentUser.name}`;
+      set("#page-dashboard .headline h1", L.dash_h1);
+      set("#page-dashboard .headline .sub", L.dash_sub);
+      const dmls = document.querySelectorAll("#page-dashboard .metric-label");
+      if(dmls[0]) dmls[0].textContent=L.dash_myLeave;
+      if(dmls[1]) dmls[1].textContent=L.dash_teamLeave;
+      if(dmls[2]) dmls[2].textContent=L.dash_monthTrip;
+      set("#todayBtn", L.dash_today);
+      set(".calendar-filter-bar > span", L.dash_filterLabel);
+      const calFlabels=document.querySelectorAll(".calendar-filter-bar label");
+      if(calFlabels[0]){const t2=calFlabels[0].lastChild;if(t2&&t2.nodeType===3)t2.textContent=" "+L.dash_leaveFilter;}
+      if(calFlabels[1]){const t2=calFlabels[1].lastChild;if(t2&&t2.nodeType===3)t2.textContent=" "+L.dash_tripFilter;}
+      document.querySelectorAll(".weekdays div").forEach((d,i)=>{if(L.dash_weekdays[i])d.textContent=L.dash_weekdays[i];});
+      set("#page-dashboard .card-head h2", L.dash_upcoming);
+      set("#page-dashboard .card-head p", L.dash_upcomingSub);
+      // Leave page
+      set("#page-leave .headline h1", L.leave_h1);
+      set("#page-leave .headline .sub", L.leave_sub);
+      set("#leaveRegisterBtn", L.leave_registerBtn);
+      const lmls=document.querySelectorAll("#page-leave .metric-label");
+      if(lmls[0]) lmls[0].textContent=L.leave_totalGranted;
+      if(lmls[1]) lmls[1].textContent=L.leave_used;
+      if(lmls[2]) lmls[2].textContent=L.leave_scheduled;
+      if(lmls[3]) lmls[3].textContent=L.leave_remaining;
+      set("#page-leave h3", L.leave_history);
+      const ltf=document.getElementById("leaveTypeFilter");
+      if(ltf){const ltKeys=["leave_allTypes","lt_annual","lt_halfAM","lt_halfPM","lt_special","lt_unpaidSick","lt_paidSick","lt_checkup","lt_healthLeave","lt_official"];Array.from(ltf.options).forEach((o,i)=>{if(ltKeys[i])o.textContent=L[ltKeys[i]];});}
+      const lmf=document.getElementById("leaveMonthFilter");
+      if(lmf){Array.from(lmf.options).forEach((o,i)=>{if(i===0)o.textContent=L.leave_allMonths;else if(L.months[i-1])o.textContent=L.months[i-1];});}
+      setP("#leaveSearch","placeholder",L.leave_searchPlaceholder);
+      const lsf=document.getElementById("leaveFilter");
+      if(lsf){if(lsf.options[0])lsf.options[0].textContent=L.leave_allStatus;if(lsf.options[1])lsf.options[1].textContent=L.leave_statusUpcoming;if(lsf.options[2])lsf.options[2].textContent=L.leave_statusPast;}
+      const leaveExcelBtn=document.querySelector("#page-leave .toolbar .secondary");
+      if(leaveExcelBtn)leaveExcelBtn.textContent=L.leave_excel;
+      const lths=document.querySelectorAll("#page-leave thead th");
+      [L.leave_th_type,L.leave_th_period,L.leave_th_days,L.leave_th_reason,L.leave_th_status,L.leave_th_manage].forEach((h,i)=>{if(lths[i])lths[i].textContent=h;});
+      // Leave type select options (keep value attr, only change text)
+      const ltDayLabel=L.gen_days; const ltNoDeduct=L.lt_noDeduct;
+      [["#leaveType","#eventLeaveType"]].flat().forEach(sel=>{
+        const el=document.querySelector(sel); if(!el) return;
+        const ltLabels=[`${L.lt_annual} (1${ltDayLabel})`,`${L.lt_halfAM} (0.5${ltDayLabel})`,`${L.lt_halfPM} (0.5${ltDayLabel})`,`${L.lt_special} (${ltNoDeduct})`,`${L.lt_unpaidSick} (${ltNoDeduct})`,`${L.lt_paidSick} (${ltNoDeduct})`,`${L.lt_checkup} (${ltNoDeduct})`,`${L.lt_healthLeave} (${ltNoDeduct})`,`${L.lt_official} (${ltNoDeduct})`];
+        Array.from(el.options).forEach((o,i)=>{if(ltLabels[i])o.textContent=ltLabels[i];});
+      });
+      // Trip page
+      set("#page-trips .headline h1", L.trip_h1);
+      set("#page-trips .headline .sub", L.trip_sub);
+      const tripRegBtn=document.querySelector("#page-trips .headline .primary"); if(tripRegBtn)tripRegBtn.textContent=L.trip_registerBtn;
+      const tmls=document.querySelectorAll("#page-trips .metric-label");
+      if(tmls[0])tmls[0].textContent=L.trip_yearTotal;if(tmls[1])tmls[1].textContent=L.trip_monthTotal;if(tmls[2])tmls[2].textContent=L.trip_todayTotal;
+      set("#page-trips h3", L.trip_history);
+      setP("#tripSearch","placeholder",L.trip_searchPlaceholder);
+      const tths=document.querySelectorAll("#page-trips thead th");
+      [L.trip_th_area,L.trip_th_dest,L.trip_th_outwork,L.trip_th_period,L.trip_th_creator,L.trip_th_companions,L.trip_th_orderNo,L.trip_th_orderContent,L.trip_th_desc,L.trip_th_status,L.trip_th_manage].forEach((h,i)=>{if(tths[i])tths[i].textContent=h;});
+      // Admin trips page
+      set("#page-trips-admin .headline h1", L.adminTrip_h1);
+      set("#page-trips-admin .headline .sub", L.adminTrip_sub);
+      const atExcelBtn=document.querySelector("#page-trips-admin .headline .secondary"); if(atExcelBtn)atExcelBtn.textContent=L.adminTrip_excelBtn;
+      const atmls=document.querySelectorAll("#page-trips-admin .metric-label");
+      if(atmls[0])atmls[0].textContent=L.adminTrip_total;if(atmls[1])atmls[1].textContent=L.adminTrip_month;if(atmls[2])atmls[2].textContent=L.adminTrip_empCount;if(atmls[3])atmls[3].textContent=L.adminTrip_today;
+      const atdf2=document.getElementById("adminTripDeptFilter"); if(atdf2&&atdf2.options[0])atdf2.options[0].textContent=L.adminTrip_allDept;
+      setP("#adminTripSearch","placeholder",L.adminTrip_searchPlaceholder);
+      const aths=document.querySelectorAll("#page-trips-admin thead th");
+      [L.adminTrip_th_emp,L.adminTrip_th_dept,L.adminTrip_th_count,L.adminTrip_th_detail].forEach((h,i)=>{if(aths[i])aths[i].textContent=h;});
+      const atEmpty=document.querySelector("#adminTripDetail .empty"); if(atEmpty)atEmpty.textContent=L.adminTrip_selectEmp;
+      // Profile page
+      set("#page-profile .headline h1", L.profile_h1);
+      set("#page-profile .headline .sub", L.profile_sub);
+      set("label[for='profilePhone']", L.profile_phone);
+      set("label[for='profileBirth']", L.profile_birth);
+      set("label[for='profileAddress']", L.profile_address);
+      setP("#profileAddress","placeholder",L.profile_addressPlaceholder);
+      set("#profileEmergencyLabel", L.profile_emergency);
+      setP("#profileEmergencyName","placeholder",L.profile_emergencyName);
+      const prel=document.getElementById("profileEmergencyRelation");
+      if(prel){const relKeys=["rel_spouse","rel_father","rel_mother","rel_child","rel_sibling","rel_grandparent","rel_friend","rel_relative","rel_other"];Array.from(prel.options).forEach((o,i)=>{if(i===0)o.textContent=L.profile_emergencyRelation;else if(relKeys[i-1])o.textContent=L[relKeys[i-1]];});}
+      const lfRel=document.getElementById("lfEmergencyRelation");
+      if(lfRel){const relKeys=["rel_spouse","rel_father","rel_mother","rel_child","rel_sibling","rel_grandparent","rel_friend","rel_relative","rel_other"];Array.from(lfRel.options).forEach((o,i)=>{if(i===0)o.textContent=L.profile_emergencyRelation;else if(relKeys[i-1])o.textContent=L[relKeys[i-1]];});}
+      setP("#lfEmergencyName","placeholder",L.profile_emergencyName);
+      set("#profileForm .primary", L.profile_saveBtn);
+      // Team page
+      set("#page-team .headline h1", L.team_h1);
+      set("#page-team .headline .sub", L.team_sub);
+      const tmlsT=document.querySelectorAll("#page-team .metric-label");
+      if(tmlsT[0])tmlsT[0].textContent=L.team_totalEmp;if(tmlsT[1])tmlsT[1].textContent=L.team_avgRate;if(tmlsT[2])tmlsT[2].textContent=L.team_todayLeave;
+      const tdft=document.getElementById("deptFilter"); if(tdft&&tdft.options[0])tdft.options[0].textContent=L.gen_allDept;
+      setP("#teamSearch","placeholder",L.team_searchPlaceholder);
+      const retiredLabelEl=document.querySelector('#page-team label[style*="font-size:12px"]');
+      if(retiredLabelEl){const nodes=retiredLabelEl.childNodes;const last=nodes[nodes.length-1];if(last&&last.nodeType===3)last.textContent=" "+L.team_showRetired;}
+      const ttheads=document.querySelectorAll("#page-team thead th");
+      [L.team_th_name,L.team_th_dept,L.team_th_used,L.team_th_remaining,L.team_th_total,L.team_th_detail].forEach((h,i)=>{if(ttheads[i])ttheads[i].textContent=h;});
+      const adminDetailEmpty=document.querySelector("#adminDetail .empty"); if(adminDetailEmpty)adminDetailEmpty.textContent=L.team_selectEmp;
+      // Employees page
+      set("#page-employees .headline h1", L.emp_h1);
+      set("#page-employees .headline .sub", L.emp_sub);
+      const empCsvBtn=document.querySelector("#page-employees .headline .secondary"); if(empCsvBtn)empCsvBtn.textContent=L.emp_csvBtn;
+      set("#page-employees h3", L.emp_addTitle);
+      setP("#empMgmtSearch","placeholder",L.emp_searchPlaceholder);
+      // 직원 관리 테이블은 관리자 전용이므로 항상 한국어 유지 (헤더 번역 불필요)
+      // Holidays page
+      set("#page-holidays .headline h1", L.holiday_h1);
+      set("#page-holidays .headline .sub", L.holiday_sub);
+      set("label[for='holidayDate']", L.holiday_date);
+      set("label[for='holidayName']", L.holiday_name);
+      set("#holidaySaveBtn", L.holiday_saveBtn);
+      const hths=document.querySelectorAll(".holiday-table thead th");
+      [L.holiday_th_year,L.holiday_th_date,L.holiday_th_name,L.holiday_th_manage].forEach((h,i)=>{if(hths[i])hths[i].textContent=h;});
+      // Leave modal
+      set(".leave-form-title", L.modal_leave_title);
+      set("label[for='leaveType']", L.modal_leave_typeLabel);
+      set("label[for='leaveStart']", L.modal_leave_startLabel);
+      set("label[for='leaveEnd']", L.modal_leave_endLabel);
+      set("label[for='leaveReason']", L.modal_leave_reasonLabel);
+      setP("#leaveReason","placeholder",L.modal_leave_reasonPlaceholder);
+      const lmBtns=document.querySelectorAll("#leaveForm .modal-foot button");
+      if(lmBtns[0])lmBtns[0].textContent=L.modal_leave_cancelBtn;if(lmBtns[1])lmBtns[1].textContent=L.modal_leave_saveBtn;
+      // Password modal
+      set("#passwordModal h2", L.modal_pw_title);
+      set("label[for='currentPassword']", L.modal_pw_current);
+      set("label[for='newPassword']", L.modal_pw_new);
+      set("label[for='confirmPassword']", L.modal_pw_confirm);
+      const pwBtns=document.querySelectorAll("#passwordForm .modal-foot button");
+      if(pwBtns[0])pwBtns[0].textContent=L.modal_pw_cancelBtn;if(pwBtns[1])pwBtns[1].textContent=L.modal_pw_changeBtn;
+      // Cal create modal
+      set("#calendarCreateModal h2", L.cal_create_title);
+      set("#calendarCreateLeave", L.cal_create_leave);
+      set("#calendarCreateTrip", L.cal_create_trip);
+      const calCancelBtn=document.querySelector("#calendarCreateModal .modal-foot button"); if(calCancelBtn)calCancelBtn.textContent=L.cal_create_cancel;
+      // Trip modal
+      set("#tmDomesticBtn", L.modal_trip_domestic);
+      set("#tmOverseasBtn", L.modal_trip_overseas);
+      const setLFT=(id,val)=>{const el=document.getElementById(id);if(el&&el.firstChild&&el.firstChild.nodeType===3)el.firstChild.textContent=val+" ";};
+      setLFT("tmDestLabel",L.modal_trip_dest_label);
+      setP("#tmDest","placeholder",L.modal_trip_dest_placeholder);
+      const tmOut=document.getElementById("tmOutworkLabel");if(tmOut&&tmOut.lastChild&&tmOut.lastChild.nodeType===3)tmOut.lastChild.textContent=" "+L.modal_trip_outwork_chk;
+      setLFT("tmStartLabel",L.modal_trip_start);
+      setLFT("tmEndLabel",L.modal_trip_end);
+      setLFT("tmCompanionLabel",L.modal_trip_companion_label);
+      setP("#tmCompanionsInput","placeholder",L.modal_trip_companion_placeholder);
+      setLFT("tmDescLabel",L.modal_trip_desc_label);
+      setP("#tmDesc","placeholder",L.modal_trip_desc_placeholder);
+      setLFT("tmPOLabel",L.modal_trip_po_label);
+      setP("#tmOrderNo","placeholder",L.modal_trip_orderNo_placeholder);
+      setP("#tmPO","placeholder",L.modal_trip_po_placeholder);
+      const setLFTOpt=id=>{const el=document.getElementById(id);if(el){const sp=el.querySelector("span[style*='font-weight:400']");if(sp)sp.textContent=L.modal_trip_companion_optional;}};
+      setLFTOpt("tmCompanionLabel");setLFTOpt("tmOrderNoLabel");setLFTOpt("tmPOLabel");setLFTOpt("tmDescLabel");
+      set("#tmNotifyLabel",L.modal_trip_notify);
+      set("#tripModalCancelBtn",L.modal_trip_cancel);
+      // Leave form modal labels
+      set("#lfLabelDept",L.lf_dept);
+      set("#lfLabelPosition",L.lf_position);
+      set("#lfLabelName",L.lf_name);
+      set("#lfLabelType",L.lf_type);
+      set("#lfLabelReason",L.lf_reason);
+      set("#lfLabelPeriod",L.lf_period);
+      set("#lfLabelEmergency",L.lf_emergency);
+      set("#lfLabelNotes",L.lf_notes);
+      set("#lfSubmitText",L.lf_submit_text);
+      set("#lfNotifyLabel",L.lf_notify);
+      set("#lfCancelBtn",L.lf_cancel);
+      set("#lfSubmitBtn",L.lf_submit_btn);
+      setP("#lfReason","placeholder",L.lf_reason_placeholder);
+      // Leave type select in leave form modal
+      const lfTypeEl=document.getElementById("lfType");
+      if(lfTypeEl){
+        const ltDL=L.gen_days;const ltND=L.lt_noDeduct;
+        const lfLabels=[`${L.lt_annual}`,`${L.lt_halfAM}`,`${L.lt_halfPM}`,`${L.lt_special}`,`${L.lt_unpaidSick}`,`${L.lt_paidSick}`,`${L.lt_checkup}`,`${L.lt_healthLeave}`,`${L.lt_official}`];
+        Array.from(lfTypeEl.options).forEach((o,i)=>{if(lfLabels[i])o.textContent=lfLabels[i];});
+      }
+      // Leave submit modal
+      set("#leaveSubmitTitle",L.ls_title);
+      set("#leaveSubmitSub",L.ls_sub);
+      const lsNL=document.getElementById("leaveSubmitNotifyLabel");if(lsNL){lsNL.firstChild.textContent=L.ls_notify+" ";const lsNS=lsNL.querySelector("span");if(lsNS)lsNS.textContent=L.ls_notify_sub;}
+      set("#leaveSubmitCancelBtn",L.ls_cancel);
+      set("#leaveSubmitDownloadBtn",L.ls_download);
+      set("#leaveSubmitConfirmBtn",L.ls_confirm);
+      // Leave confirm modal
+      set("#leaveConfirmTitle",L.lc_title);
+      set("#leaveConfirmNo",L.lc_no);
+      set("#leaveConfirmYes",L.lc_yes);
+      // Detail modal buttons
+      set("#detailDeleteBtn", L.detail_deleteBtn);
+      set("#detailEditBtn", L.detail_editBtn);
+      const detailCloseBtns=document.querySelectorAll("#eventDetailModal .primary[data-close]");
+      detailCloseBtns.forEach(b=>b.textContent=L.detail_closeBtn);
+      // Re-render dynamic content
+      if(currentUser) { renderAll(); renderTripPage(); }
+    }
+    // ────────────────────────────────────────────────────────────────────
+
     const TODAY = new Date();
     TODAY.setHours(0, 0, 0, 0);
     const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
     const shiftDate = days => { const d = new Date(TODAY); d.setDate(d.getDate()+days); return iso(d); };
-    const formatDate = value => new Intl.DateTimeFormat("ko-KR", {month:"short", day:"numeric", weekday:"short"}).format(new Date(value+"T00:00:00"));
+    const formatDate = value => new Intl.DateTimeFormat(t("locale")||"ko-KR", {month:"short", day:"numeric", weekday:"short"}).format(new Date(value+"T00:00:00"));
 
     const defaultLeaves = [];
     const defaultEvents = [];
@@ -1376,21 +2072,34 @@
       ["한지수","디자인팀",16,3.5,1,11.5], ["윤태호","영업팀",17,8,1,8]
     ];
     const baseEmployeeDirectory = [
-      ["대표이사","박명래","mlpark@imecs.co.kr","관리자"],["영업팀","육근호","ghyouk@imecs.co.kr","일반"],
-      ["영업팀","박민준","mjpark@imecs.co.kr","관리자"],["영업팀","전진욱","jwjeon@imecs.co.kr","일반"],
-      ["영업팀","박상인","sangin.park@imecs.co.kr","일반"],["영업팀","신문섭","msshin@imecs.co.kr","일반"],
-      ["영업팀","이근우","gwlee@imecs.co.kr","일반"],["PM","박정열","jypark@imecs.co.kr","일반"],
-      ["PM","신재운","jwshin@imecs.co.kr","일반"],["PM","정기주","gjjung@imecs.co.kr","일반"],
-      ["PM","손유정","yjson@imecs.co.kr","일반"],["PM","정은주","ejjeong@imecs.co.kr","일반"],
-      ["PM","강은지","ejkang@imecs.co.kr","일반"],["AE","유홍원","hwyoo@imecs.co.kr","일반"],
-      ["AE","송현승","hssong@imecs.co.kr","일반"],["AE","강효경","hkkang@imecs.co.kr","일반"],
-      ["재무","유정현","jhyu@imecs.co.kr","관리자"],["재무","이시은","selee@imecs.co.kr","관리자"],
-      ["재무","유희정","hjyou@imecs.co.kr","일반"],["기술팀","유승민","smyoo@imecs.co.kr","일반"],
-      ["기술팀","김민성","mskim@imecs.co.kr","일반"],["기술팀","황상호","shhwang@imecs.co.kr","일반"],
-      ["기술팀","강두원","dwkang@imecs.co.kr","일반"],["기술팀","윤종욱","juyun@imecs.co.kr","일반"],
-      ["기술팀","정단혁","dhjung@imecs.co.kr","일반"],["기술팀","김효빈","hbkim@imecs.co.kr","일반"],
-      ["기술팀","김주환","jhkim@imecs.co.kr","일반"]
-    ].map(([dept,name,email,role],index)=>({dept,name,email,role,id:index+1,position:"",status:"재직"}));
+      ["대표이사","박명래","mlpark@imecs.co.kr","관리자","Myung Rae Park"],
+      ["영업팀","육근호","ghyouk@imecs.co.kr","일반","Geun Ho Youk"],
+      ["영업팀","박민준","mjpark@imecs.co.kr","관리자","Min Jun Park"],
+      ["영업팀","전진욱","jwjeon@imecs.co.kr","일반","Jin Wook Jeon"],
+      ["영업팀","박상인","sangin.park@imecs.co.kr","일반","Sang In Park"],
+      ["영업팀","신문섭","msshin@imecs.co.kr","일반","Moon Seop Shin"],
+      ["영업팀","이근우","gwlee@imecs.co.kr","일반","Geun Woo Lee"],
+      ["PM","박정열","jypark@imecs.co.kr","일반","Jung Yeol Park"],
+      ["PM","신재운","jwshin@imecs.co.kr","일반","Jae Woon Shin"],
+      ["PM","정기주","gjjung@imecs.co.kr","일반","Gi Ju Jung"],
+      ["PM","손유정","yjson@imecs.co.kr","일반","Yu Jeong Son"],
+      ["PM","정은주","ejjeong@imecs.co.kr","일반","Eun Ju Jeong"],
+      ["PM","강은지","ejkang@imecs.co.kr","일반","Eun Ji Kang"],
+      ["AE","유홍원","hwyoo@imecs.co.kr","일반","Hong Won Yoo"],
+      ["AE","송현승","hssong@imecs.co.kr","일반","Hyun Seung Song"],
+      ["AE","강효경","hkkang@imecs.co.kr","일반","Hyo Kyung Kang"],
+      ["재무","유정현","jhyu@imecs.co.kr","관리자","Jung Hyun Yu"],
+      ["재무","이시은","selee@imecs.co.kr","관리자","Si Eun Lee"],
+      ["재무","유희정","hjyou@imecs.co.kr","일반","Hee Jung You"],
+      ["기술팀","유승민","smyoo@imecs.co.kr","일반","Seung Min Yoo"],
+      ["기술팀","김민성","mskim@imecs.co.kr","일반","Min Seong Kim"],
+      ["기술팀","황상호","shhwang@imecs.co.kr","일반","Sang Ho Hwang"],
+      ["기술팀","강두원","dwkang@imecs.co.kr","일반","Du Won Kang"],
+      ["기술팀","윤종욱","juyun@imecs.co.kr","일반","Jong Wook Yun"],
+      ["기술팀","정단혁","dhjung@imecs.co.kr","일반","Dan Hyuk Jung"],
+      ["기술팀","김효빈","hbkim@imecs.co.kr","일반","Hyo Bin Kim"],
+      ["기술팀","김주환","jhkim@imecs.co.kr","일반","Ju Hwan Kim"]
+    ].map(([dept,name,email,role,nameEn],index)=>({dept,name,nameEn:nameEn||"",email,role,id:index+1,position:"",status:"재직"}));
     let employeeDirectory = [];
     let leaves = [];
     let events = [];
@@ -1445,7 +2154,7 @@
     }
     const saveEmployees = () => {
       localStorage.setItem("imecEmployees",JSON.stringify(employeeDirectory));
-      sbUp("imec_employees",employeeDirectory.map(p=>({id:p.id,dept:p.dept,name:p.name,email:p.email,role:p.role,position:p.position||null,status:p.status||"재직",notify_target:p.notifyTarget||false})));
+      sbUp("imec_employees",employeeDirectory.map(p=>({id:p.id,dept:p.dept,name:p.name,name_en:p.nameEn||null,email:p.email,role:p.role,position:p.position||null,status:p.status||"재직",notify_target:p.notifyTarget||false})));
     };
     window.toggleNotifyTarget = (email, checked) => {
       const p = employeeDirectory.find(x=>x.email===email); if(!p) return;
@@ -1475,6 +2184,59 @@
     function sbDelLeave(id) { sbDel("imec_leaves","id",String(id)); }
     function sbDelEvent(id) { sbDel("imec_events","id",String(id)); }
 
+    async function sbAuditLog(action, targetId, beforeData, afterData) {
+      const sb=getSupabase(); if(!sb) return;
+      try {
+        await sb.from("imec_audit_log").insert({
+          actor_email: currentUser?.email||"unknown",
+          action,
+          target_id: String(targetId),
+          before_data: beforeData||null,
+          after_data: afterData||null
+        });
+      } catch(e) {}
+    }
+
+    window.showAuditLog = async () => {
+      const sb=getSupabase(); if(!sb) return showToast("Supabase 연결이 필요합니다.");
+      let el=document.getElementById("auditLogModal");
+      if(!el) {
+        el=document.createElement("div"); el.id="auditLogModal"; el.className="modal-backdrop";
+        el.innerHTML=`<div class="modal" style="max-width:720px">
+          <div class="modal-head"><h2 style="margin:0;font-size:17px">감사 로그</h2><button class="close" data-close>×</button></div>
+          <div class="modal-body" id="auditLogBody" style="padding:16px 20px;max-height:480px;overflow-y:auto;overflow-x:auto"></div>
+          <div class="modal-foot"><button class="primary" data-close>닫기</button></div>
+        </div>`;
+        document.body.appendChild(el);
+        el.addEventListener("click",e=>{if(e.target===el||e.target.dataset.close!==undefined)el.classList.remove("open");});
+      }
+      document.getElementById("auditLogBody").innerHTML="<p style='color:var(--muted)'>로딩 중...</p>";
+      el.classList.add("open");
+      try {
+        const {data,error}=await sb.from("imec_audit_log").select("*").order("created_at",{ascending:false}).limit(200);
+        if(error||!data){document.getElementById("auditLogBody").innerHTML="<p style='color:#c0392b'>로드 실패. Supabase에 imec_audit_log 테이블이 있는지 확인하세요.</p>";return;}
+        if(!data.length){document.getElementById("auditLogBody").innerHTML="<p style='color:var(--muted)'>아직 기록된 로그가 없습니다.</p>";return;}
+        const actionLabel=a=>({delete_leave:"연차 삭제",edit_leave:"연차 수정",delete_trip:"출장 삭제",edit_trip:"출장 수정"}[a]||a);
+        document.getElementById("auditLogBody").innerHTML=`<table style="width:100%;font-size:12px;border-collapse:collapse;min-width:580px">
+          <thead><tr style="background:var(--canvas)">
+            <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)">시각</th>
+            <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)">사용자</th>
+            <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)">작업</th>
+            <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)">변경 전 내용</th>
+          </tr></thead>
+          <tbody>${data.map(r=>{
+            const isDelete=r.action&&r.action.startsWith("delete");
+            const before=r.before_data?Object.entries(r.before_data).filter(([k])=>["type","start","end","creator","location","title"].includes(k)).map(([k,v])=>`${k}:${v}`).join(" / "):"-";
+            return `<tr style="border-bottom:1px solid var(--line)">
+              <td style="padding:7px 10px;color:var(--muted);white-space:nowrap">${new Date(r.created_at).toLocaleString("ko-KR")}</td>
+              <td style="padding:7px 10px">${r.actor_email||"-"}</td>
+              <td style="padding:7px 10px"><span class="status${isDelete?" locked":""}" style="font-size:11px">${actionLabel(r.action)}</span></td>
+              <td style="padding:7px 10px;color:var(--muted);max-width:280px">${before}</td>
+            </tr>`;
+          }).join("")}</tbody></table>`;
+      } catch(e){document.getElementById("auditLogBody").innerHTML="<p style='color:#c0392b'>오류 발생</p>";}
+    };
+
     async function loadFromSupabase() {
       const sb=getSupabase();
       if(!sb) return false;
@@ -1494,10 +2256,10 @@
         ]);
         if(empR.error) throw empR.error;
         if(empR.data&&empR.data.length>0) {
-          employeeDirectory=empR.data.map((p,i)=>({...p,id:p.id||i+1,position:p.position||"",status:p.status||"재직",notifyTarget:p.notify_target||false}));
+          employeeDirectory=empR.data.map((p,i)=>({...p,id:p.id||i+1,position:p.position||"",status:p.status||"재직",notifyTarget:p.notify_target||false,nameEn:p.name_en||""}));
         } else {
           employeeDirectory=baseEmployeeDirectory;
-          sbUp("imec_employees",employeeDirectory.map(p=>({id:p.id,dept:p.dept,name:p.name,email:p.email,role:p.role,position:p.position||null,status:p.status||"재직"})));
+          sbUp("imec_employees",employeeDirectory.map(p=>({id:p.id,dept:p.dept,name:p.name,name_en:p.nameEn||null,email:p.email,role:p.role,position:p.position||null,status:p.status||"재직"})));
         }
         if(leavesR.data&&leavesR.data.length>0) {
           leaves=leavesR.data.map(r=>({id:isNaN(Number(r.id))?r.id:Number(r.id),type:r.type,start:r.start_date,end:r.end_date,days:Number(r.days),reason:r.reason||"",creator:r.creator,creatorEmail:r.creator_email||"",emergencyContact:r.emergency_contact||"",notes:r.notes||"",submittedAt:r.submitted_at||"",updatedAt:r.updated_at||""}));
@@ -1524,10 +2286,10 @@
         localStorage.setItem("imecEmployees",JSON.stringify(employeeDirectory));
         localStorage.setItem("imecLeaves",JSON.stringify(leaves));
         localStorage.setItem("imecEvents",JSON.stringify(events));
-        localStorage.setItem("imecPasswords",JSON.stringify(passwordStore));
         localStorage.setItem("imecAnnualLeave",JSON.stringify(annualLeaveStore));
         localStorage.setItem("imecHolidays",JSON.stringify(holidayStore));
-        localStorage.setItem("imecProfiles",JSON.stringify(profileStore));
+        localStorage.removeItem("imecPasswords"); // 비밀번호 해시는 localStorage에 저장하지 않음
+        localStorage.removeItem("imecProfiles");  // 개인정보는 localStorage에 캐시하지 않음
         return true;
       } catch(e) {
         console.error("[SB] load failed:",e.message||e);
@@ -1542,8 +2304,8 @@
       events=JSON.parse(localStorage.getItem("imecEvents")||"null")||defaultEvents;
       const sharedSeeds=defaultEvents.filter(item=>String(item.id).startsWith("shared-"));
       sharedSeeds.forEach(seed=>{ if(!events.some(item=>item.id===seed.id)) events.push(seed); });
-      passwordStore=JSON.parse(localStorage.getItem("imecPasswords")||"{}");
-      profileStore=JSON.parse(localStorage.getItem("imecProfiles")||"{}");
+      passwordStore={};  // 오프라인 시 비밀번호 없음 → Supabase 연결 필요
+      profileStore={};   // 오프라인 시 프로필 없음 → Supabase 연결 필요
       annualLeaveStore=JSON.parse(localStorage.getItem("imecAnnualLeave")||"{}");
       holidayStore=JSON.parse(localStorage.getItem("imecHolidays")||"{}");
     }
@@ -1569,8 +2331,7 @@
     };
     const initials = name => name ? name.slice(-2) : "IM";
     const isAdmin = user => user?.role === "관리자";
-    const englishNames = {"박민준":"Min Jun","김서윤":"Seo Yun","이시은":"Si Eun","신재운":"Jae Woon"};
-    const englishName = name => englishNames[name] || name;
+    const dispName = p => (window._lang !== 'kr' && p && p.nameEn) ? p.nameEn : (p ? p.name : "");
     const employeeLeaves = employee => employee ? leaves.filter(item=>
       item.creatorEmail===employee.email || (!item.creatorEmail&&item.creator===employee.name)
     ) : [];
@@ -1583,10 +2344,10 @@
     };
     function applyCurrentUser() {
       if(!currentUser) return;
-      document.getElementById("topName").textContent=currentUser.name;
+      document.getElementById("topName").textContent=dispName(currentUser)||currentUser.name;
       document.getElementById("topRole").textContent=`${currentUser.dept} · ${currentUser.role}`;
       document.getElementById("topAvatar").textContent=initials(currentUser.name);
-      document.getElementById("greetingText").textContent=`Good Morning, ${englishName(currentUser.name)}`;
+      document.getElementById("greetingText").textContent=`Good Morning, ${dispName(currentUser)||currentUser.name}`;
       document.querySelectorAll(".admin-only").forEach(el=>el.classList.toggle("hidden",!isAdmin(currentUser)));
       document.getElementById("profileName").textContent=currentUser.name;
       document.getElementById("profileDept").textContent=`${currentUser.dept} · ${currentUser.email}`;
@@ -1603,7 +2364,7 @@
       currentUser=user;
       sessionStorage.setItem("imecSession",user.email);
       document.getElementById("loginScreen").classList.add("hidden");
-      applyCurrentUser(); navigate("dashboard"); renderAll();
+      applyCurrentUser(); navigate("dashboard"); renderAll(); applyLang();
     }
     const POSITION_ORDER = ["대표이사","회장","부회장","사장","부사장","전무","상무","이사","부장","차장","과장","대리","주임","사원"];
     function sortEmployees(arr) {
@@ -1624,7 +2385,7 @@
       if(type==="other") return "other";
       return "leave";
     };
-    const typeLabel = type => ({trip:"출장", leave:"연차", other:"기타", meeting:"기타"})[type] || type;
+    const typeLabel = type => ({trip:t("type_trip"), leave:t("type_leave"), other:t("type_other"), meeting:t("type_other")})[type] || type;
     const filterType = type => type;
     const leaveDayValues = {"연차":1, "오전 반차":.5, "오후 반차":.5, "특별휴가":0, "무급병가":0, "유급병가":0, "건강검진":0, "건강휴가":0, "공가":0};
     const baseKoreanHolidays = {
@@ -1650,9 +2411,25 @@
       "2030-08-15":"광복절", "2030-09-11":"추석 연휴", "2030-09-12":"추석", "2030-09-13":"추석 연휴",
       "2030-10-03":"개천절", "2030-10-09":"한글날", "2030-12-25":"성탄절"
     };
+    // 날짜를 YYYY-MM-DD 형식으로 반환 (대체공휴일 포함하지 않음)
+    function generateFixedHolidays(year) {
+      const pad = n => String(n).padStart(2,"0");
+      const d = (m,day) => `${year}-${pad(m)}-${pad(day)}`;
+      return {
+        [d(1,1)]:"신정",[d(3,1)]:"삼일절",[d(5,5)]:"어린이날",
+        [d(6,6)]:"현충일",[d(8,15)]:"광복절",[d(10,3)]:"개천절",
+        [d(10,9)]:"한글날",[d(12,25)]:"성탄절"
+      };
+    }
     let holidayStore = {};
     const buildHolidays = () => {
       const merged={...baseKoreanHolidays};
+      // 하드코딩된 범위(2026-2030) 외 연도는 고정공휴일 자동 생성
+      const coveredYears=new Set(Object.keys(baseKoreanHolidays).map(d=>parseInt(d.slice(0,4))));
+      const neededYears=new Set([...Object.keys(holidayStore).map(d=>parseInt(d.slice(0,4)))]);
+      const curYear=new Date().getFullYear();
+      for(let y=curYear;y<=curYear+5;y++) neededYears.add(y);
+      neededYears.forEach(y=>{if(!coveredYears.has(y)) Object.assign(merged,generateFixedHolidays(y));});
       Object.entries(holidayStore).forEach(([date,name])=>{
         if(name===null) delete merged[date];
         else merged[date]=name;
@@ -1722,21 +2499,26 @@
       const committed=usedDone+scheduled;
       const granted=currentUser?employeeStats(currentUser).granted:16;
       const remaining=Math.max(0,granted-usedDone), pct=granted?Math.round(committed/granted*100):0;
-      document.getElementById("scheduledDashboardMetric").textContent=`${scheduled.toFixed(1)}일`;
+      document.getElementById("scheduledDashboardMetric").textContent=`${scheduled.toFixed(1)}${t("gen_days")}`;
+      const dmNote=document.getElementById("dashMetricNote");
+      if(dmNote&&dmNote.firstChild&&dmNote.firstChild.nodeType===3) dmNote.firstChild.textContent=t("leave_scheduled")+" ";
       document.getElementById("remainingMetric").textContent = remaining.toFixed(1);
-      document.getElementById("remainingMetric2").firstChild.textContent = remaining.toFixed(1);
-      document.getElementById("grantedMetricNote").textContent=`총 ${granted}일`;
-      document.getElementById("usedDoneMetric").firstChild.textContent = usedDone.toFixed(1);
-      document.getElementById("scheduledMetric").firstChild.textContent = scheduled.toFixed(1);
+      const rmSmallEl=document.querySelector('#remainingMetric + small');
+      if(rmSmallEl) rmSmallEl.textContent=' '+t('gen_days');
+      document.getElementById("remainingMetric2").innerHTML=`${remaining.toFixed(1)}<small> ${t("gen_days")}</small>`;
+      document.getElementById("grantedMetricNote").textContent=`${t("gen_total")} ${granted}${t("gen_days")}`;
+      document.getElementById("usedDoneMetric").innerHTML=`${usedDone.toFixed(1)}<small> ${t("gen_days")}</small>`;
+      document.getElementById("scheduledMetric").innerHTML=`${scheduled.toFixed(1)}<small> ${t("gen_days")}</small>`;
       document.getElementById("sideUsage").textContent = pct+"%";
       document.getElementById("sideProgress").style.width = pct+"%";
       const grantedMetric=document.querySelector("#page-leave .metric-value");
-      if(grantedMetric) grantedMetric.innerHTML=`${granted}<small> 일</small>`;
+      if(grantedMetric) grantedMetric.innerHTML=`${granted}<small> ${t("gen_days")}</small>`;
       const monthPrefix=`${TODAY.getFullYear()}-${String(TODAY.getMonth()+1).padStart(2,"0")}`;
       const monthLeaves=allCalendarEvents().filter(event=>event.type==="leave"&&event.date.startsWith(monthPrefix)).length;
       const monthTrips=events.filter(event=>event.type==="trip"&&event.date.startsWith(monthPrefix)).length;
-      document.getElementById("teamLeaveMetric").innerHTML=`${monthLeaves}<small> 건</small>`;
-      document.getElementById("monthTripMetric").innerHTML=`${monthTrips}<small> 건</small>`;
+      const cntSuffix=t("gen_count"); const cntSep=cntSuffix?" ":"";
+      document.getElementById("teamLeaveMetric").innerHTML=`${monthLeaves}<small>${cntSep}${cntSuffix}</small>`;
+      document.getElementById("monthTripMetric").innerHTML=`${monthTrips}<small>${cntSep}${cntSuffix}</small>`;
       const todayKey=iso(TODAY);
       const todayLeaveNames=[...new Set(allCalendarEvents()
         .filter(event=>event.type==="leave"&&datesBetween(event.date,event.endDate||event.date).includes(todayKey))
@@ -1744,12 +2526,13 @@
       const todayTripNames=[...new Set(events
         .filter(event=>event.type==="trip"&&datesBetween(event.date,event.endDate||event.date).includes(todayKey))
         .flatMap(event=>[event.creator,...(event.companions||"").split(",").map(name=>name.trim())]).filter(Boolean))];
-      document.getElementById("todayLeaveMetric").innerHTML=`${todayLeaveNames.length}<small> 명</small>`;
-      document.getElementById("todayLeaveNames").textContent=todayLeaveNames.length?todayLeaveNames.join(", "):"휴가 인원 없음";
+      const peopleSuffix=t("gen_people"); const peopleSep=peopleSuffix?" ":"";
+      document.getElementById("todayLeaveMetric").innerHTML=`${todayLeaveNames.length}<small>${peopleSep}${peopleSuffix}</small>`;
+      document.getElementById("todayLeaveNames").textContent=todayLeaveNames.length?todayLeaveNames.join(", "):t("gen_noLeave");
       const todayTripEl=document.getElementById("todayTripMetric");
-      if(todayTripEl) { todayTripEl.innerHTML=`${todayTripNames.length}<small> 명</small>`; document.getElementById("todayTripNames").textContent=todayTripNames.length?todayTripNames.join(", "):"출장 인원 없음"; }
+      if(todayTripEl) { todayTripEl.innerHTML=`${todayTripNames.length}<small>${peopleSep}${peopleSuffix}</small>`; document.getElementById("todayTripNames").textContent=todayTripNames.length?todayTripNames.join(", "):t("gen_noTrip"); }
       const activeEmps=employeeDirectory.filter(p=>p.status!=="퇴사");
-      document.getElementById("totalEmployeeMetric").innerHTML=`${activeEmps.length}<small> 명</small>`;
+      document.getElementById("totalEmployeeMetric").innerHTML=`${activeEmps.length}<small>${peopleSep}${peopleSuffix}</small>`;
       const rates=activeEmps.map(p=>{ const s=employeeStats(p); return s.granted?s.committed/s.granted*100:0; });
       const avg=rates.length?Math.round(rates.reduce((a,b)=>a+b,0)/rates.length):0;
       const avgEl=document.getElementById("avgLeaveRateMetric"); if(avgEl) avgEl.innerHTML=`${avg}<small> %</small>`;
@@ -1783,15 +2566,15 @@
         const past = isPast(l.start);
         const locked = past&&!isAdmin(currentUser);
         return `<tr>
-          <td><strong>${l.type}</strong></td><td>${formatDate(l.start)}${l.start!==l.end ? " - "+formatDate(l.end):""}</td>
-          <td>${Number(l.days).toFixed(1)}일</td><td>${l.reason || "-"}</td>
-          <td><span class="status${past?" locked":""}">${past?"사용 완료":"사용 예정"}</span></td>
+          <td><strong>${translateLeaveType(l.type)}</strong></td><td>${formatDate(l.start)}${l.start!==l.end ? " - "+formatDate(l.end):""}</td>
+          <td>${Number(l.days).toFixed(1)}${t("gen_days")}</td><td>${l.reason || "-"}</td>
+          <td><span class="status${past?" locked":""}">${past?t("status_done"):t("status_upcoming")}</span></td>
           <td>
-            <button class="action-btn" onclick="editLeave(${l.id})" ${locked?"disabled title='지난 연차는 수정할 수 없습니다'":""}>수정</button>
-            <button class="action-btn" onclick="deleteLeave(${l.id})" ${locked?"disabled title='지난 연차는 삭제할 수 없습니다'":""}>삭제</button>
+            <button class="action-btn" onclick="editLeave(${l.id})" ${locked?"disabled":""}>${t("act_edit")}</button>
+            <button class="action-btn" onclick="deleteLeave(${l.id})" ${locked?"disabled":""}>${t("act_delete")}</button>
           </td>
         </tr>`;
-      }).join("") : `<tr><td colspan="6" class="empty">조건에 맞는 연차 내역이 없습니다.</td></tr>`;
+      }).join("") : `<tr><td colspan="6" class="empty">${t("gen_noData")}</td></tr>`;
     }
 
     function allCalendarEvents() {
@@ -1801,32 +2584,41 @@
         ...leaves.filter(l=>!hiddenEmails.has(l.creatorEmail)).map(l=>({id:l.id, eventKey:`leave:${l.id}`, type:"leave", date:l.start, endDate:l.end, time:"", title:l.type, leaveType:l.type, days:l.days, location:l.reason, reason:l.reason, creator:l.creator||"박민준",creatorEmail:l.creatorEmail||"mjpark@imecs.co.kr"}))
       ];
     }
+    const dispCreator = name => {
+      if(window._lang==='kr') return name;
+      const p = employeeDirectory.find(x => x.name === name);
+      return (p && p.nameEn) ? p.nameEn : name;
+    };
+    const translateLeaveType = type => {
+      const map = {"연차":t("lt_annual"),"오전 반차":t("lt_halfAM"),"오후 반차":t("lt_halfPM"),"특별휴가":t("lt_special"),"무급병가":t("lt_unpaidSick"),"유급병가":t("lt_paidSick"),"건강검진":t("lt_checkup"),"건강휴가":t("lt_healthLeave"),"공가":t("lt_official")};
+      return map[type] || type;
+    };
     function calendarEventLabel(event) {
-      const creator=esc(event.creator||currentUser?.name||"박민준");
+      const creator=esc(dispCreator(event.creator||currentUser?.name||"박민준"));
       if(event.type==="trip") {
         const dest=esc(event.location||event.title.replace(/ 출장(\(외근\))?$/,""));
-        if(event.isOutwork) return `${creator} - 외근 (${dest})`;
-        const comp=(event.companions||"").split(",").map(s=>esc(s.trim())).filter(Boolean);
-        const compStr=comp.length===1?` · ${comp[0]}`:comp.length>1?` · ${comp[0]} 외 ${comp.length-1}인`:"";
-        return `${creator} - 출장 (${dest})${compStr}`;
+        if(event.isOutwork) return `${creator} - ${t("type_outwork")} (${dest})`;
+        const comp=(event.companions||"").split(",").map(s=>esc(dispCreator(s.trim()))).filter(Boolean);
+        const compStr=comp.length===1?` · ${comp[0]}`:comp.length>1?` · ${comp[0]} +${comp.length-1}`:"";
+        return `${creator} - ${t("type_trip")} (${dest})${compStr}`;
       }
-      if(event.type==="other") return `${creator} - 기타 (${esc(event.title||event.location||"이벤트")})`;
-      return `${creator} - ${esc(event.leaveType||event.title)}`;
+      if(event.type==="other") return `${creator} - ${t("type_other")} (${esc(event.title||event.location||"event")})`;
+      return `${creator} - ${translateLeaveType(event.leaveType||event.title)}`;
     }
     function calendarEventHtml(event) {
-      const creator=esc(event.creator||currentUser?.name||"박민준");
+      const creator=esc(dispCreator(event.creator||currentUser?.name||"박민준"));
       if(event.type==="trip") {
         const dest=esc(event.location||event.title.replace(/ 출장(\(외근\))?$/,""));
-        if(event.isOutwork) return `${creator} - 외근 (${dest})`;
-        const comp=(event.companions||"").split(",").map(s=>esc(s.trim())).filter(Boolean);
-        const compStr=comp.length===1?` · ${comp[0]}`:comp.length>1?` · ${comp[0]} 외 ${comp.length-1}인`:"";
-        const main=`${creator} - 출장 (${dest})`;
+        if(event.isOutwork) return `${creator} - ${t("type_outwork")} (${dest})`;
+        const comp=(event.companions||"").split(",").map(s=>esc(dispCreator(s.trim()))).filter(Boolean);
+        const compStr=comp.length===1?` · ${comp[0]}`:comp.length>1?` · ${comp[0]} +${comp.length-1}`:"";
+        const main=`${creator} - ${t("type_trip")} (${dest})`;
         return compStr
           ? `${main}<span style="color:#888;font-weight:400">${compStr}</span>`
           : main;
       }
-      if(event.type==="other") return `${creator} - 기타 (${esc(event.title||event.location||"이벤트")})`;
-      return `${creator} - ${esc(event.leaveType||event.title)}`;
+      if(event.type==="other") return `${creator} - ${t("type_other")} (${esc(event.title||event.location||"event")})`;
+      return `${creator} - ${translateLeaveType(event.leaveType||event.title)}`;
     }
     function expandedCalendarEvents() {
       return allCalendarEvents().flatMap(event=>
@@ -1838,11 +2630,11 @@
       document.getElementById("upcomingList").innerHTML = upcoming.length ? upcoming.map(e=>{
         const d = new Date(e.date+"T00:00:00");
         const color = e.type==="leave"?"#68ad83":"#f0a35c";
-        const creator = esc(e.creator||"");
-        return `<div class="event-item"><div class="event-date">${d.toLocaleDateString("ko-KR",{month:"short"})}<strong>${d.getDate()}</strong></div>
-          <i class="event-stripe" style="background:${color}"></i><div class="event-main"><strong>${esc(e.title)}</strong><small>${creator ? creator+" · " : ""}${e.time||"종일"} · ${e.location||"장소 미정"}</small></div>
+        const creator = esc(dispCreator(e.creator||""));
+        return `<div class="event-item"><div class="event-date">${d.toLocaleDateString(t("locale")||"ko-KR",{month:"short"})}<strong>${d.getDate()}</strong></div>
+          <i class="event-stripe" style="background:${color}"></i><div class="event-main"><strong>${esc(e.title)}</strong><small>${creator ? creator+" · " : ""}${e.time||t("dash_allDay")} · ${e.location||t("dash_noLocation")}</small></div>
           <span class="tag ${typeClass(e.type,e)}">${typeLabel(e.type)}</span></div>`;
-      }).join("") : `<div class="empty">다가오는 일정이 없습니다.</div>`;
+      }).join("") : `<div class="empty">${t("dash_noUpcoming")}</div>`;
     }
     function renderMonthQuickEvents() {
       const monthPrefix=`${calendarDate.getFullYear()}-${String(calendarDate.getMonth()+1).padStart(2,"0")}`;
@@ -1854,16 +2646,16 @@
           const shortDate=`${date.getMonth()+1}.${date.getDate()}`;
           const eventName=type==="trip"?(item.location||item.title.replace(/ 출장$/,"")):item.title;
           const seedCreator=defaultEvents.find(seed=>String(seed.id)===String(item.id))?.creator;
-          const creator=item.creator||seedCreator||currentUser?.name||"등록자";
+          const creator=dispCreator(item.creator||seedCreator||currentUser?.name||"등록자");
           return `<div class="quick-card"><span>${shortDate} · ${creator} · ${eventName}</span></div>`;
-        }).join(""):`<div class="metric-note">이번 달 예정 없음</div>`;
+        }).join(""):`<div class="metric-note">${t("gen_noMonthPlan")}</div>`;
       };
       renderQuick("trip","monthTripQuick");
     }
 
     function renderCalendar() {
       const y=calendarDate.getFullYear(), m=calendarDate.getMonth();
-      document.getElementById("calendarTitle").textContent = `${y}년 ${m+1}월`;
+      document.getElementById("calendarTitle").textContent = t("cal_title")(y,m);
       const first = new Date(y,m,1), start = new Date(y,m,1-first.getDay());
       const items = expandedCalendarEvents().filter(e=>calendarFilters.has(filterType(e.type)));
       let html="";
@@ -1875,7 +2667,7 @@
         const visibleEvents=expanded?dayEvents:dayEvents.slice(0,4);
         html += `<div class="cal-day ${other?"other":""} ${today?"today":""} ${holiday?"holiday":""} ${sunday?"sunday":""} ${expanded?"expanded":""}" data-date="${key}"><div class="day-head" onclick="openEventModalForDate('${key}')" style="cursor:pointer"><span class="day-num">${d.getDate()}</span>${holiday?`<span class="holiday-name">${holiday}</span>`:""}</div>
           ${visibleEvents.map(e=>`<button class="cal-event ${typeClass(e.type,e)}" title="${calendarEventLabel(e)}" onclick="openEventDetail('${encodeURIComponent(e.eventKey)}')">${calendarEventHtml(e)}</button>`).join("")}
-          ${dayEvents.length>4?`<button class="cal-more" onclick="toggleCalendarDay('${key}')">${expanded?"접기":`+${dayEvents.length-4} 더보기`}</button>`:""}
+          ${dayEvents.length>4?`<button class="cal-more" onclick="toggleCalendarDay('${key}')">${expanded?t("cal_collapse"):`+${dayEvents.length-4} ${t("cal_more")}`}</button>`:""}
         </div>`;
       }
       document.getElementById("calendarGrid").innerHTML=html;
@@ -1904,28 +2696,28 @@
       let gridHtml;
       if(event.type==="trip") {
         gridHtml=[
-          r("일정 종류",typeName), r("외근 여부",event.isOutwork?"외근":"해당 없음"),
-          r("국내/해외",event.tripArea||"국내"), r("행선지",event.location||"-"),
-          r("기간",period), r("동행 직원",event.companions||"-"),
-          r("Order NO#",event.orderNumber||"-"), r("Order 내용",event.poNumber||"-"),
-          rf("출장 내용",event.tripDesc||"-")
+          r(t("detail_type"),typeName), r(t("detail_outworkLabel"),event.isOutwork?t("detail_outworkYes"):t("detail_outworkNo")),
+          r(t("detail_area"),event.tripArea==="해외"?t("modal_trip_overseas"):t("modal_trip_domestic")), r(t("detail_dest"),event.location||"-"),
+          r(t("detail_period"),period), r(t("detail_companions"),event.companions||"-"),
+          r(t("detail_orderNo"),event.orderNumber||"-"), r(t("detail_orderContent"),event.poNumber||"-"),
+          rf(t("detail_tripDesc"),event.tripDesc||"-")
         ].join("");
       } else {
         const rows=[
-          ["일정 종류",typeName],
-          ["기간",period],
-          event.type==="other"?["시작 시간",event.time||"-"]:null,
-          event.type==="other"?["장소",event.location||"-"]:null,
-          event.type==="leave"?["차감 일수",`${Number(event.days||0).toFixed(1)}일`]:null,
-          event.type==="leave"?["사유",event.reason||"-"]:null,
-          event.type==="other"?["메일 대상",event.attendees||"메일 알림 없음"]:null
+          [t("detail_type"),typeName],
+          [t("detail_period"),period],
+          event.type==="other"?[t("detail_startTime"),event.time||"-"]:null,
+          event.type==="other"?[t("detail_location"),event.location||"-"]:null,
+          event.type==="leave"?[t("detail_deductDays"),`${Number(event.days||0).toFixed(1)}${t("gen_days")}`]:null,
+          event.type==="leave"?[t("detail_reason"),event.reason||"-"]:null,
+          event.type==="other"?[t("detail_mailTarget"),event.attendees||t("detail_noMail")]:null
         ].filter(Boolean);
         gridHtml=rows.map((row,index)=>`<div class="detail-row ${index>=rows.length-2?"full":""}"><span>${row[0]}</span><strong>${row[1]}</strong></div>`).join("");
       }
       document.getElementById("detailHero").className=`detail-hero ${typeClass(event.type,event)}`;
       document.getElementById("detailType").textContent=`${typeName} DETAIL`;
       document.getElementById("detailTitle").textContent=esc(title);
-      document.getElementById("detailCreator").textContent=`등록자 · ${esc(event.creator||currentUser?.name||"박민준")}`;
+      document.getElementById("detailCreator").textContent=`${t("detail_creator")} · ${esc(event.creator||currentUser?.name||"박민준")}`;
       document.getElementById("detailGrid").innerHTML=gridHtml;
       document.getElementById("detailEditBtn").disabled=false;
       document.getElementById("detailDeleteBtn").disabled=false;
@@ -1987,12 +2779,12 @@
         const usageRate=stats.granted?Math.round(stats.committed/stats.granted*100):0;
         const tripCount=employeeTrips(person).length;
         return `<tr style="cursor:pointer" onclick="showEmployeeAdmin('${person.email}')">
-          <td><div style="display:flex;align-items:center;gap:6px"><div class="avatar" style="background:hsl(${30+i*31} 58% 84%);width:24px;height:24px;font-size:11px;flex-shrink:0">${initials(person.name)}</div><strong style="font-size:12px">${person.name}${person.status==="퇴사"?'<span class="status locked" style="font-size:9px;margin-left:3px">퇴사</span>':""}</strong></div></td>
+          <td><div style="display:flex;align-items:center;gap:6px"><div class="avatar" style="background:hsl(${30+i*31} 58% 84%);width:24px;height:24px;font-size:11px;flex-shrink:0">${initials(person.name)}</div><strong style="font-size:12px">${dispName(person)}${person.status==="퇴사"?`<span class="status locked" style="font-size:9px;margin-left:3px">${t("status_retired")}</span>`:""}</strong></div></td>
           <td style="font-size:11px;color:var(--muted)">${person.dept}</td>
           <td style="text-align:center;font-size:11px">${stats.committed.toFixed(1)}</td>
           <td style="text-align:center;font-size:11px">${(stats.granted-stats.committed).toFixed(1)}</td>
           <td style="text-align:center;font-size:11px">${stats.granted.toFixed(1)}</td>
-          <td><button class="action-btn" style="font-size:11px;padding:2px 8px" onclick="event.stopPropagation();showEmployeeAdmin('${person.email}')">조회</button></td></tr>`;
+          <td><button class="action-btn" style="font-size:11px;padding:2px 8px" onclick="event.stopPropagation();showEmployeeAdmin('${person.email}')">${t("act_view")}</button></td></tr>`;
       }).join("");
     }
     function updateDeptFilter() {
@@ -2045,25 +2837,25 @@
       const granted=employeeStats(person).granted;
       document.getElementById("adminLeaveTableWrap").innerHTML=`
         <div style="display:flex;gap:12px;margin-bottom:10px;font-size:12px;color:var(--muted)">
-          <span>부여 <strong style="color:var(--ink)">${granted}일</strong></span>
-          <span>사용 <strong style="color:var(--ink)">${used.toFixed(1)}일</strong></span>
-          <span>예정 <strong style="color:var(--ink)">${scheduled.toFixed(1)}일</strong></span>
-          <span>잔여 <strong style="color:var(--green)">${Math.max(0,granted-used).toFixed(1)}일</strong></span>
+          <span>${t("leave_totalGranted")} <strong style="color:var(--ink)">${granted}${t("gen_days")}</strong></span>
+          <span>${t("leave_used")} <strong style="color:var(--ink)">${used.toFixed(1)}${t("gen_days")}</strong></span>
+          <span>${t("leave_scheduled")} <strong style="color:var(--ink)">${scheduled.toFixed(1)}${t("gen_days")}</strong></span>
+          <span>${t("leave_remaining")} <strong style="color:var(--green)">${Math.max(0,granted-used).toFixed(1)}${t("gen_days")}</strong></span>
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead><tr><th style="padding:6px 8px;border-bottom:2px solid var(--line);text-align:left">종류</th><th style="padding:6px 8px;border-bottom:2px solid var(--line);text-align:left">기간</th><th style="padding:6px 8px;border-bottom:2px solid var(--line)">일수</th><th style="padding:6px 8px;border-bottom:2px solid var(--line);text-align:left">사유</th><th style="padding:6px 8px;border-bottom:2px solid var(--line)">상태</th><th style="padding:6px 8px;border-bottom:2px solid var(--line)">관리</th></tr></thead>
+          <thead><tr><th style="padding:6px 8px;border-bottom:2px solid var(--line);text-align:left">${t("leave_th_type")}</th><th style="padding:6px 8px;border-bottom:2px solid var(--line);text-align:left">${t("leave_th_period")}</th><th style="padding:6px 8px;border-bottom:2px solid var(--line)">${t("leave_th_days")}</th><th style="padding:6px 8px;border-bottom:2px solid var(--line);text-align:left">${t("leave_th_reason")}</th><th style="padding:6px 8px;border-bottom:2px solid var(--line)">${t("leave_th_status")}</th><th style="padding:6px 8px;border-bottom:2px solid var(--line)">${t("leave_th_manage")}</th></tr></thead>
           <tbody>${empLeaves.length?empLeaves.map(l=>`<tr>
             <td style="padding:6px 8px;border-bottom:1px solid var(--line)"><strong>${l.type}</strong></td>
             <td style="padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap">${formatDate(l.start)}${l.start!==l.end?" ~ "+formatDate(l.end):""}</td>
             <td style="padding:6px 8px;border-bottom:1px solid var(--line);text-align:center">${Number(l.days).toFixed(1)}</td>
             <td style="padding:6px 8px;border-bottom:1px solid var(--line);color:var(--muted);font-size:11px">${l.reason||"-"}</td>
-            <td style="padding:6px 8px;border-bottom:1px solid var(--line);text-align:center"><span class="status ${isPast(l.start)?"locked":""}" style="font-size:11px">${isPast(l.start)?"사용완료":"예정"}</span></td>
+            <td style="padding:6px 8px;border-bottom:1px solid var(--line);text-align:center"><span class="status ${isPast(l.start)?"locked":""}" style="font-size:11px">${isPast(l.start)?t("status_done"):t("status_tripUpcoming")}</span></td>
             <td style="padding:6px 8px;border-bottom:1px solid var(--line)">
-              <button class="action-btn" onclick="adminEditLeave('${l.id}','${email}')">수정</button>
-              <button class="action-btn" onclick="adminDeleteLeave('${l.id}','${email}')">삭제</button>
+              <button class="action-btn" onclick="adminEditLeave('${l.id}','${email}')">${t("act_edit")}</button>
+              <button class="action-btn" onclick="adminDeleteLeave('${l.id}','${email}')">${t("act_delete")}</button>
               <button class="action-btn" onclick="downloadLeaveHtml('${l.id}')">↓</button>
             </td>
-          </tr>`).join(""):`<tr><td colspan="6" class="empty" style="padding:12px;text-align:center">연차 내역 없음</td></tr>`}</tbody>
+          </tr>`).join(""):`<tr><td colspan="6" class="empty" style="padding:12px;text-align:center">${t("gen_noData")}</td></tr>`}</tbody>
         </table>
       `;
     }
@@ -2086,10 +2878,11 @@
     window.adminDeleteLeave = (id, creatorEmail) => {
       const l=leaves.find(x=>String(x.id)===String(id)); if(!l) return;
       if(!confirm(`${formatDate(l.start)} ${l.type}을(를) 삭제할까요?`)) return;
+      sbAuditLog("delete_leave",id,l,null);
       leaves=leaves.filter(x=>String(x.id)!==String(id));
       sbDelLeave(id); save(); renderAll();
       renderAdminEmployeeLeaves(creatorEmail);
-      showToast("연차가 삭제되었습니다.");
+      showToast(t("toast_leaveDeleted"));
     };
     window.adminAddLeave = email => {
       const person=employeeDirectory.find(p=>p.email===email); if(!person) return;
@@ -2201,8 +2994,8 @@ ${empLeaves.map(l=>makePageBlock(l)).join("\n")}
         .sort(([a],[b])=>a.localeCompare(b));
       table.innerHTML=rows.length?rows.map(([date,name])=>{
         const year=new Date(date+"T00:00:00").getFullYear();
-        return `<tr><td>${year}</td><td>${formatDate(date)}</td><td><strong>${name}</strong></td><td><button class="action-btn" onclick="editHoliday('${date}')">수정</button><button class="action-btn" onclick="deleteHoliday('${date}')">삭제</button></td></tr>`;
-      }).join(""):`<tr><td colspan="4" class="empty">등록된 공휴일이 없습니다.</td></tr>`;
+        return `<tr><td>${year}</td><td>${formatDate(date)}</td><td><strong>${name}</strong></td><td><button class="action-btn" onclick="editHoliday('${date}')">${t("act_edit")}</button><button class="action-btn" onclick="deleteHoliday('${date}')">${t("act_delete")}</button></td></tr>`;
+      }).join(""):`<tr><td colspan="4" class="empty">${t("gen_noData")}</td></tr>`;
     }
     function saveHolidayStore() {
       localStorage.setItem("imecHolidays",JSON.stringify(holidayStore));
@@ -2244,7 +3037,7 @@ ${empLeaves.map(l=>makePageBlock(l)).join("\n")}
       if(!person||!confirm(`${person.name}님의 비밀번호를 초기화할까요?`)) return;
       passwordStore[email]=DEFAULT_PASSWORD;
       sbSavePassword(email,DEFAULT_PASSWORD);
-      showToast(`${person.name}님의 비밀번호를 초기 비밀번호로 변경했습니다.`);
+      showToast(`${person.name}님의 비밀번호가 imec1234!로 초기화되었습니다.`);
     };
     window.restoreEmployee = email => {
       const person=employeeDirectory.find(p=>p.email===email); if(!person) return;
@@ -2415,52 +3208,56 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const myMonthTrips=myYearTrips.filter(e=>e.date.startsWith(monthPrefix));
       const myTodayTrips=allMyTrips.filter(e=>e.date<=todayStr&&(e.endDate||e.date)>=todayStr);
       const el=id=>document.getElementById(id);
-      if(el("myTripTotalMetric")) el("myTripTotalMetric").innerHTML=`${myYearTrips.length}<small> 건</small>`;
-      if(el("myTripMonthMetric")) el("myTripMonthMetric").innerHTML=`${myMonthTrips.length}<small> 건</small>`;
-      if(el("myTripTodayMetric")) el("myTripTodayMetric").innerHTML=`${myTodayTrips.length}<small> 건</small>`;
-      document.getElementById("tripTable").innerHTML=trips.length?trips.map(t=>{
-        const period=t.date===t.endDate||!t.endDate?formatDate(t.date):`${formatDate(t.date)} ~ ${formatDate(t.endDate)}`;
-        const canEdit=canManageEvent(t);
-        const tripPast = isPast(t.endDate||t.date);
-        const isOwner = t.creatorEmail===currentUser.email;
+      const tripCntSuffix=t("gen_count"); const tripCntSep=tripCntSuffix?" ":"";
+      if(el("myTripTotalMetric")) el("myTripTotalMetric").innerHTML=`${myYearTrips.length}<small>${tripCntSep}${tripCntSuffix}</small>`;
+      if(el("myTripMonthMetric")) el("myTripMonthMetric").innerHTML=`${myMonthTrips.length}<small>${tripCntSep}${tripCntSuffix}</small>`;
+      if(el("myTripTodayMetric")) el("myTripTodayMetric").innerHTML=`${myTodayTrips.length}<small>${tripCntSep}${tripCntSuffix}</small>`;
+      document.getElementById("tripTable").innerHTML=trips.length?trips.map(tr=>{
+        const period=tr.date===tr.endDate||!tr.endDate?formatDate(tr.date):`${formatDate(tr.date)} ~ ${formatDate(tr.endDate)}`;
+        const canEdit=canManageEvent(tr);
+        const tripPast = isPast(tr.endDate||tr.date);
+        const isOwner = tr.creatorEmail===currentUser.email;
+        const areaLabel=tr.tripArea==="해외"?t("modal_trip_overseas"):t("modal_trip_domestic");
         return `<tr>
-          <td>${t.tripArea||"국내"}</td>
-          <td><strong>${t.location||t.title.replace(/ 출장(\(외근\))?$/,"")}</strong></td>
-          <td>${t.isOutwork?'<span style="background:#fff8dd;color:#7a5a00;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600">외근</span>':"-"}</td>
+          <td>${areaLabel}</td>
+          <td><strong>${tr.location||tr.title.replace(/ 출장(\(외근\))?$/,"")}</strong></td>
+          <td>${tr.isOutwork?`<span style="background:#fff8dd;color:#7a5a00;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600">${t("type_outwork")}</span>`:"-"}</td>
           <td>${period}</td>
-          <td>${isOwner?`<span style="color:var(--muted);font-size:12px">나</span>`:`${t.creator||"-"}`}</td>
-          <td>${t.companions||"-"}</td>
-          <td>${t.orderNumber||"-"}</td>
-          <td>${t.poNumber||"-"}</td>
-          <td style="max-width:160px;white-space:pre-wrap">${t.tripDesc||"-"}</td>
-          <td><span class="status${tripPast?" locked":""}">${tripPast?"완료":"예정"}</span></td>
+          <td>${isOwner?`<span style="color:var(--muted);font-size:12px">${t("type_me")}</span>`:`${tr.creator||"-"}`}</td>
+          <td>${tr.companions||"-"}</td>
+          <td>${tr.orderNumber||"-"}</td>
+          <td>${tr.poNumber||"-"}</td>
+          <td style="max-width:160px;white-space:pre-wrap">${tr.tripDesc||"-"}</td>
+          <td><span class="status${tripPast?" locked":""}">${tripPast?t("status_tripDone"):t("status_tripUpcoming")}</span></td>
           <td>
-            <button class="action-btn" onclick="openTripModal('${t.id}')" ${canEdit?"":"disabled"}>수정</button>
-            <button class="action-btn" onclick="deleteTripEvent('${t.id}')" ${canEdit?"":"disabled"}>삭제</button>
+            <button class="action-btn" onclick="openTripModal('${tr.id}')" ${canEdit?"":"disabled"}>${t("act_edit")}</button>
+            <button class="action-btn" onclick="deleteTripEvent('${tr.id}')" ${canEdit?"":"disabled"}>${t("act_delete")}</button>
           </td>
         </tr>`;
-      }).join(""):`<tr><td colspan="11" class="empty">등록된 출장이 없습니다.</td></tr>`;
+      }).join(""):`<tr><td colspan="11" class="empty">${t("gen_noData")}</td></tr>`;
     }
     window.adminDeleteTrip = (id, email) => {
       const t=events.find(e=>String(e.id)===String(id));
       if(!t) return;
       if(!confirm(`${t.location||t.title} 출장을 삭제할까요?`)) return;
+      sbAuditLog("delete_trip",id,t,null);
       events=events.filter(e=>String(e.id)!==String(id));
       sbDelEvent(id); save(); renderAll(); renderAdminTrips(); showAdminTripDetail(email);
-      showToast("출장이 삭제되었습니다.");
+      showToast(t("toast_tripDeleted"));
     };
     window.deleteTripEvent = id => {
       const t=events.find(e=>String(e.id)===String(id));
-      if(!t||!canManageEvent(t)) return showToast("등록자 본인 또는 관리자만 삭제할 수 있습니다.");
+      if(!t||!canManageEvent(t)) return showToast(t("toast_onlyCreatorOrAdmin"));
       if(!confirm(`${t.title} 출장을 삭제할까요?`)) return;
+      sbAuditLog("delete_trip",id,t,null);
       events=events.filter(e=>String(e.id)!==String(id));
       sbDelEvent(id); save(); renderAll(); renderTripPage();
-      showToast("출장이 삭제되었습니다.");
+      showToast(t("toast_tripDeleted"));
     };
     function renderTripAttendeeResults(query="") {
       const q=query.trim().toLowerCase();
       const matches=employeeDirectory.filter(p=>
-        !selectedTripAttendees.some(s=>s.email===p.email)&&(!q||`${p.name} ${p.dept}`.toLowerCase().includes(q))
+        !selectedTripAttendees.some(s=>s.email===p.email)&&(!q||`${p.name} ${p.nameEn||""} ${p.dept}`.toLowerCase().includes(q))
       );
       const el=document.getElementById("tripAttendeeResults");
       if(!el) return;
@@ -2522,11 +3319,13 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const todayTrips=events.filter(e=>e.type==="trip"&&e.date<=todayStr&&(e.endDate||e.date)>=todayStr);
       const uniqueEmps=new Set(yearTrips.map(e=>e.creatorEmail));
       const el=id=>document.getElementById(id);
-      if(el("tripTotalMetric")) el("tripTotalMetric").innerHTML=`${yearTrips.length}<small> 건</small>`;
-      if(el("tripMonthMetric")) el("tripMonthMetric").innerHTML=`${monthTrips.length}<small> 건</small>`;
-      if(el("tripEmpCountMetric")) el("tripEmpCountMetric").innerHTML=`${uniqueEmps.size}<small> 명</small>`;
-      if(el("tripTodayMetric")) el("tripTodayMetric").innerHTML=`${todayTrips.length}<small> 건</small>`;
-      if(el("tripTodayNames")) el("tripTodayNames").textContent=todayTrips.length?todayTrips.map(e=>e.creator).join(", "):"출장 없음";
+      const atCntSuffix=t("gen_count"); const atCntSep=atCntSuffix?" ":"";
+      const atPplSuffix=t("gen_people"); const atPplSep=atPplSuffix?" ":"";
+      if(el("tripTotalMetric")) el("tripTotalMetric").innerHTML=`${yearTrips.length}<small>${atCntSep}${atCntSuffix}</small>`;
+      if(el("tripMonthMetric")) el("tripMonthMetric").innerHTML=`${monthTrips.length}<small>${atCntSep}${atCntSuffix}</small>`;
+      if(el("tripEmpCountMetric")) el("tripEmpCountMetric").innerHTML=`${uniqueEmps.size}<small>${atPplSep}${atPplSuffix}</small>`;
+      if(el("tripTodayMetric")) el("tripTodayMetric").innerHTML=`${todayTrips.length}<small>${atCntSep}${atCntSuffix}</small>`;
+      if(el("tripTodayNames")) el("tripTodayNames").textContent=todayTrips.length?todayTrips.map(e=>dispCreator(e.creator)).join(", "):t("gen_noTrip");
     }
 
     window.showAdminTripDetail = email => {
@@ -2538,18 +3337,18 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         const comp=(e.companions||"").split(",").map(s=>s.trim());
         const mails=(e.attendees||"").split(",").map(s=>s.trim().toLowerCase());
         return e.creatorEmail===person.email||comp.includes(person.name)||mails.includes(person.email.toLowerCase());
-      }).map(t=>{
-        const isCompanion=t.creatorEmail!==person.email;
-        return {...t,isCompanion};
+      }).map(trip=>{
+        const isCompanion=trip.creatorEmail!==person.email;
+        return {...trip,isCompanion};
       }).sort((a,b)=>b.date.localeCompare(a.date));
       document.getElementById("adminTripDetail").innerHTML=`
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
           <div>
             <h3 style="margin:0">${person.name}</h3>
-            <p style="margin:0;font-size:12px;color:var(--muted)">${person.dept}${person.position?" · "+person.position:""} · 총 ${tripsData.length}건</p>
+            <p style="margin:0;font-size:12px;color:var(--muted)">${person.dept}${person.position?" · "+person.position:""} · ${t("gen_total")} ${tripsData.length}${t("gen_count")}</p>
           </div>
           <div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end">
-            <button class="primary" style="font-size:12px;padding:7px 11px" onclick="openAdminTripModal('${email}')">＋ 출장 등록</button>
+            <button class="primary" style="font-size:12px;padding:7px 11px" onclick="openAdminTripModal('${email}')">＋ ${t("type_trip")}</button>
             <button class="secondary" style="font-size:12px" onclick="exportPersonalTrips('${email}',${year})">↓ 엑셀 다운로드</button>
           </div>
         </div>
@@ -2557,43 +3356,43 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         <div style="overflow-x:auto">
           <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:560px">
             <thead><tr style="background:#f0f5f3">
-              <th style="padding:7px 10px;border:1px solid var(--line);text-align:center;white-space:nowrap">국내/해외</th>
-              <th style="padding:7px 10px;border:1px solid var(--line);text-align:left;white-space:nowrap">출장지</th>
-              <th style="padding:7px 10px;border:1px solid var(--line);text-align:center;white-space:nowrap">외근</th>
-              <th style="padding:7px 10px;border:1px solid var(--line);text-align:left;white-space:nowrap">기간</th>
-              <th style="padding:7px 10px;border:1px solid var(--line);text-align:center;white-space:nowrap">구분</th>
-              <th style="padding:7px 10px;border:1px solid var(--line);text-align:left;white-space:nowrap">등록자</th>
-              <th style="padding:7px 10px;border:1px solid var(--line);text-align:left;white-space:nowrap">동행자</th>
-              <th style="padding:7px 10px;border:1px solid var(--line);text-align:left;white-space:nowrap">Order NO#</th>
-              <th style="padding:7px 10px;border:1px solid var(--line);text-align:left;white-space:nowrap">Order 내용</th>
-              <th style="padding:7px 10px;border:1px solid var(--line);text-align:left">출장 내용</th>
-              <th style="padding:7px 10px;border:1px solid var(--line);text-align:center;white-space:nowrap">관리</th>
+              <th style="padding:7px 10px;border:1px solid var(--line);text-align:center;white-space:nowrap">${t("trip_th_area")}</th>
+              <th style="padding:7px 10px;border:1px solid var(--line);text-align:left;white-space:nowrap">${t("trip_th_dest")}</th>
+              <th style="padding:7px 10px;border:1px solid var(--line);text-align:center;white-space:nowrap">${t("trip_th_outwork")}</th>
+              <th style="padding:7px 10px;border:1px solid var(--line);text-align:left;white-space:nowrap">${t("trip_th_period")}</th>
+              <th style="padding:7px 10px;border:1px solid var(--line);text-align:center;white-space:nowrap">${t("trip_th_status")}</th>
+              <th style="padding:7px 10px;border:1px solid var(--line);text-align:left;white-space:nowrap">${t("trip_th_creator")}</th>
+              <th style="padding:7px 10px;border:1px solid var(--line);text-align:left;white-space:nowrap">${t("trip_th_companions")}</th>
+              <th style="padding:7px 10px;border:1px solid var(--line);text-align:left;white-space:nowrap">${t("trip_th_orderNo")}</th>
+              <th style="padding:7px 10px;border:1px solid var(--line);text-align:left;white-space:nowrap">${t("trip_th_orderContent")}</th>
+              <th style="padding:7px 10px;border:1px solid var(--line);text-align:left">${t("trip_th_desc")}</th>
+              <th style="padding:7px 10px;border:1px solid var(--line);text-align:center;white-space:nowrap">${t("trip_th_manage")}</th>
             </tr></thead>
             <tbody>
-              ${tripsData.map((t,i)=>{
-                const period=t.date===t.endDate||!t.endDate?formatDate(t.date):`${formatDate(t.date)} ~ ${formatDate(t.endDate)}`;
+              ${tripsData.map((td,i)=>{
+                const period=td.date===td.endDate||!td.endDate?formatDate(td.date):`${formatDate(td.date)} ~ ${formatDate(td.endDate)}`;
                 return `<tr style="background:${i%2===0?"#fff":"#fafcfb"}">
-                  <td style="padding:7px 10px;border:1px solid var(--line);text-align:center">${t.tripArea||"국내"}</td>
-                  <td style="padding:7px 10px;border:1px solid var(--line)"><strong>${t.location||t.title.replace(/ 출장(\(외근\))?$/,"")}</strong></td>
-                  <td style="padding:7px 10px;border:1px solid var(--line);text-align:center">${t.isOutwork?'<span style="background:#fff8dd;color:#7a5a00;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600">외근</span>':"-"}</td>
+                  <td style="padding:7px 10px;border:1px solid var(--line);text-align:center">${td.tripArea==="해외"?t("modal_trip_overseas"):t("modal_trip_domestic")}</td>
+                  <td style="padding:7px 10px;border:1px solid var(--line)"><strong>${td.location||td.title.replace(/ 출장(\(외근\))?$/,"")}</strong></td>
+                  <td style="padding:7px 10px;border:1px solid var(--line);text-align:center">${td.isOutwork?`<span style="background:#fff8dd;color:#7a5a00;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600">${t("type_outwork")}</span>`:"-"}</td>
                   <td style="padding:7px 10px;border:1px solid var(--line);white-space:nowrap">${period}</td>
                   <td style="padding:7px 10px;border:1px solid var(--line);text-align:center">
-                    ${t.isCompanion?'<span style="background:#fff3e0;color:#e65100;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600">동행자</span>':'<span style="background:#e8f5ed;color:#164f46;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600">등록자</span>'}
+                    ${td.isCompanion?`<span style="background:#fff3e0;color:#e65100;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600">${t("trip_th_companions")}</span>`:`<span style="background:#e8f5ed;color:#164f46;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600">${t("trip_th_creator")}</span>`}
                   </td>
-                  <td style="padding:7px 10px;border:1px solid var(--line)">${t.creator||"-"}</td>
-                  <td style="padding:7px 10px;border:1px solid var(--line)">${t.companions||"-"}</td>
-                  <td style="padding:7px 10px;border:1px solid var(--line)">${t.orderNumber||"-"}</td>
-                  <td style="padding:7px 10px;border:1px solid var(--line)">${t.poNumber||"-"}</td>
-                  <td style="padding:7px 10px;border:1px solid var(--line);max-width:200px;white-space:pre-wrap">${t.tripDesc||"-"}</td>
+                  <td style="padding:7px 10px;border:1px solid var(--line)">${td.creator||"-"}</td>
+                  <td style="padding:7px 10px;border:1px solid var(--line)">${td.companions||"-"}</td>
+                  <td style="padding:7px 10px;border:1px solid var(--line)">${td.orderNumber||"-"}</td>
+                  <td style="padding:7px 10px;border:1px solid var(--line)">${td.poNumber||"-"}</td>
+                  <td style="padding:7px 10px;border:1px solid var(--line);max-width:200px;white-space:pre-wrap">${td.tripDesc||"-"}</td>
                   <td style="padding:7px 10px;border:1px solid var(--line);text-align:center;white-space:nowrap">
-                    <button class="action-btn" style="font-size:11px;padding:2px 8px" onclick="openTripModal('${t.id}')">수정</button>
-                    <button class="action-btn" style="font-size:11px;padding:2px 8px" onclick="adminDeleteTrip('${t.id}','${email}')">삭제</button>
+                    <button class="action-btn" style="font-size:11px;padding:2px 8px" onclick="openTripModal('${td.id}')">${t("act_edit")}</button>
+                    <button class="action-btn" style="font-size:11px;padding:2px 8px" onclick="adminDeleteTrip('${td.id}','${email}')">${t("act_delete")}</button>
                   </td>
                 </tr>`;
               }).join("")}
             </tbody>
           </table>
-        </div>`:`<div class="empty" style="padding:24px;text-align:center">${year}년 출장 기록이 없습니다.</div>`}
+        </div>`:`<div class="empty" style="padding:24px;text-align:center">${t("gen_noData")}</div>`}
       `;
     };
     window.exportEmployeeCsv = () => {
@@ -2708,7 +3507,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       `;
       const admins = employeeDirectory.filter(p => p.notifyTarget && p.status !== "퇴사" && p.email !== l.creatorEmail);
       document.getElementById("leaveNotifyList").innerHTML = admins.map(p =>
-        `<label style="display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer"><input type="checkbox" class="notify-checkbox" data-email="${p.email}" data-name="${p.name}" checked> ${p.name} <span style="color:var(--muted);font-size:11px">${p.dept}</span></label>`
+        `<label style="display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer"><input type="checkbox" class="notify-checkbox" data-email="${p.email}" data-name="${p.name}" checked> ${dispName(p)||p.name} <span style="color:var(--muted);font-size:11px">${p.dept}</span></label>`
       ).join("") || '<span style="color:var(--muted);font-size:13px">통보 대상 관리자 없음</span>';
       document.getElementById("leaveSubmitModal").classList.add("open");
     };
@@ -2717,7 +3516,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
     function renderTripCompanionChips() {
       const chips = document.getElementById("tmCompanionChips"); if(!chips) return;
       chips.innerHTML = _tripCompanions.map(name =>
-        `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--canvas);border:1px solid var(--line);border-radius:20px;padding:2px 10px 2px 10px;font-size:12px">${name}<button type="button" onclick="removeTripCompanion('${name}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;line-height:1;padding:0 0 0 2px">×</button></span>`
+        `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--canvas);border:1px solid var(--line);border-radius:20px;padding:2px 10px 2px 10px;font-size:12px">${dispCreator(name)}<button type="button" onclick="removeTripCompanion('${name}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;line-height:1;padding:0 0 0 2px">×</button></span>`
       ).join("");
       document.getElementById("tmCompanions").value = _tripCompanions.join(", ");
     }
@@ -2730,12 +3529,12 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const matches = employeeDirectory.filter(p =>
         p.status !== "퇴사" && p.email !== currentUser?.email &&
         !_tripCompanions.includes(p.name) &&
-        (!q || `${p.name} ${p.dept}`.toLowerCase().includes(q.toLowerCase()))
+        (!q || `${p.name} ${p.nameEn||""} ${p.dept}`.toLowerCase().includes(q.toLowerCase()))
       ).slice(0, 10);
       if(!matches.length) { dd.style.display = "none"; return; }
       dd.innerHTML = matches.map(p =>
         `<div onclick="selectTripCompanion('${p.name}')" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line)" onmouseover="this.style.background='#f0f7f4'" onmouseout="this.style.background=''">`+
-        `<strong>${p.name}</strong> <span style="color:var(--muted);font-size:11px">${p.dept}${p.position?" · "+p.position:""}</span></div>`
+        `<strong>${dispName(p)||p.name}</strong> <span style="color:var(--muted);font-size:11px">${p.dept}${p.position?" · "+p.position:""}</span></div>`
       ).join("");
       dd.style.display = "block";
     }
@@ -2755,9 +3554,10 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       document.getElementById("tripEditId").value = editId || "";
       const adminCreator=creatorEmail?employeeDirectory.find(p=>p.email===creatorEmail):null;
       document.getElementById("tripModalTitle").textContent = editId
-        ? "출장 수정"
-        : adminCreator ? `출장 등록 — ${adminCreator.name} (${adminCreator.dept})` : "출장 등록";
-      document.getElementById("tripModalSubmitBtn").textContent = editId ? "수정" : "등록";
+        ? t("modal_trip_update")+" — "+(adminCreator?`${dispName(adminCreator)||adminCreator.name} (${adminCreator.dept})`:(currentUser?.name||""))
+        : adminCreator ? `${t("modal_trip_submit")} — ${dispName(adminCreator)||adminCreator.name} (${adminCreator.dept})` : t("modal_trip_submit");
+      document.getElementById("tripModalSubmitBtn").textContent = editId ? t("modal_trip_update") : t("modal_trip_submit");
+      const tripCancelBtn=document.getElementById("tripModalCancelBtn"); if(tripCancelBtn) tripCancelBtn.textContent=t("modal_trip_cancel");
       _tripCompanions = [];
       if(editId) {
         const t = events.find(e => String(e.id) === String(editId));
@@ -2819,8 +3619,8 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
               <span style="font-size:10px;color:var(--muted)">${DAYS[d.getDay()]}요일</span>
             </div>
             <div style="min-width:0">
-              <strong style="display:block;font-size:13px;margin-bottom:2px">${e.creator}</strong>
-              <span style="font-size:12px;color:var(--green);font-weight:700">${e.leaveType||e.title}</span>
+              <strong style="display:block;font-size:13px;margin-bottom:2px">${dispCreator(e.creator)}</strong>
+              <span style="font-size:12px;color:var(--green);font-weight:700">${translateLeaveType(e.leaveType||e.title)}</span>
               <span style="font-size:12px;color:var(--muted);margin-left:6px">${period} · ${Number(e.days||0).toFixed(1)}일</span>
             </div>
           </div>`;
@@ -2842,7 +3642,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
               </div>
               <div style="min-width:0;flex:1">
                 <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
-                  <strong style="font-size:13px">${e.creator}</strong>
+                  <strong style="font-size:13px">${dispCreator(e.creator)}</strong>
                   <span style="font-size:11px;color:var(--muted)">${period}</span>
                 </div>
                 <div style="margin-top:3px">
@@ -2879,7 +3679,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const profile = profileStore[currentUser.email] || {};
       document.getElementById("lfDept").value = currentUser.dept;
       document.getElementById("lfPosition").value = currentUser.position || currentUser.role;
-      document.getElementById("lfName").value = currentUser.name;
+      document.getElementById("lfName").value = dispName(currentUser)||currentUser.name;
       setLeaveEmergencyFields({
         name:profile.emergencyName||"",
         relation:profile.emergencyRelation||"",
@@ -2920,7 +3720,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const el = document.getElementById(containerId); if(!el) return;
       const targets = employeeDirectory.filter(p => p.notifyTarget && p.status !== "퇴사" && p.email !== excludeEmail);
       el.innerHTML = targets.length
-        ? targets.map(p => `<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#333;cursor:pointer"><input type="checkbox" class="notify-checkbox" data-email="${p.email}" data-name="${p.name}" checked style="width:15px;height:15px;accent-color:var(--green)"> ${p.name} <span style="color:var(--muted);font-size:11px">${p.dept}</span></label>`).join("")
+        ? targets.map(p => `<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#333;cursor:pointer"><input type="checkbox" class="notify-checkbox" data-email="${p.email}" data-name="${p.name}" checked style="width:15px;height:15px;accent-color:var(--green)"> ${dispName(p)||p.name} <span style="color:var(--muted);font-size:11px">${p.dept}</span></label>`).join("")
         : '<span style="color:var(--muted);font-size:13px">통보 대상 없음</span>';
     }
 
@@ -2959,7 +3759,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
     }
 
     function navigate(page) {
-      if((page==="team"||page==="trips-admin"||page==="holidays") && currentRole!=="admin") { showToast("관리자만 확인할 수 있는 메뉴입니다."); return; }
+      if((page==="team"||page==="trips-admin"||page==="holidays") && currentRole!=="admin") { showToast(t("toast_adminOnly")); return; }
       if(page==="trips") renderTripPage();
       if(page==="trips-admin") renderAdminTrips();
       if(page==="employees") renderEmpMgmtTable();
@@ -3003,13 +3803,16 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
     }
     window.editLeave = id => {
       const l=leaves.find(x=>x.id===id);
-      if(!l || (isPast(l.start)&&!isAdmin(currentUser))) return showToast("지난 연차는 수정할 수 없습니다.");
+      if(!l || (isPast(l.start)&&!isAdmin(currentUser))) return showToast(t("err_lockedLeaveEdit"));
       openLeaveFormModal(String(id));
     };
     window.deleteLeave = id => {
       const l=leaves.find(x=>x.id===id);
-      if(!l || (isPast(l.start)&&!isAdmin(currentUser))) return showToast("지난 연차는 삭제할 수 없습니다.");
-      if(confirm(`${formatDate(l.start)} 연차를 삭제할까요?`)) { leaves=leaves.filter(x=>x.id!==id); sbDelLeave(id); save(); renderAll(); showToast("연차 일정이 삭제되었습니다."); }
+      if(!l || (isPast(l.start)&&!isAdmin(currentUser))) return showToast(t("err_lockedLeaveDelete"));
+      if(confirm(`${formatDate(l.start)} 연차를 삭제할까요?`)) {
+        sbAuditLog("delete_leave",id,l,null);
+        leaves=leaves.filter(x=>x.id!==id); sbDelLeave(id); save(); renderAll(); showToast(t("toast_leaveEventDeleted"));
+      }
     };
     function setActiveEventType(type) {
       document.getElementById("eventType").value=type;
@@ -3033,11 +3836,11 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
     }
     function validateCalendarEventAction(target) {
       if(!target||((!isCalendarEventOwner(target))&&!isAdmin(currentUser))) {
-        showLoginError("수정/삭제 불가","다른 직원이 입력한 이벤트는 수정/삭제가 불가능합니다.");
+        showLoginError(t("err_noPermission_title"),t("err_noPermission_msg"));
         return false;
       }
       if(target.type!=="trip" && isPast(target.date) && !isAdmin(currentUser)) {
-        showLoginError("과거 일정","과거일자는 수정/삭제할 수 없습니다.");
+        showLoginError(t("err_pastEvent_title"),t("err_pastEvent_msg"));
         return false;
       }
       return true;
@@ -3057,7 +3860,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         document.getElementById("eventDetailModal").classList.remove("open");
         openTripModal(String(id));
       } else {
-        showLoginError("수정 불가","기타 이벤트는 더 이상 수정할 수 없습니다.");
+        showLoginError(t("err_noEditOther_title"),t("err_noEditOther_msg"));
       }
     };
     window.deleteCalendarEvent = key => {
@@ -3076,11 +3879,11 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         events=events.filter(event=>String(event.id)!==id);
         sbDelEvent(id);
       } else {
-        return showLoginError("삭제 불가","기타 이벤트는 더 이상 삭제할 수 없습니다.");
+        return showLoginError(t("err_noDeleteOther_title"),t("err_noDeleteOther_msg"));
       }
       save(); renderAll();
       document.getElementById("eventDetailModal").classList.remove("open");
-      showToast("일정이 삭제되었습니다.");
+      showToast(t("toast_eventDeleted"));
     };
 
     document.querySelectorAll(".nav button").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.page)));
@@ -3119,7 +3922,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       document.getElementById("leaveSubmitModal").classList.remove("open");
       pendingSubmitLeaveId = null;
       renderLeaveTable();
-      showToast("연차 신청서가 제출되었습니다.");
+      showToast(t("toast_leaveSubmitted"));
     });
 
     // 국내/해외 토글
@@ -3160,19 +3963,19 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const dest = document.getElementById("tmDest").value.trim();
       const start = document.getElementById("tmStart").value;
       const end = document.getElementById("tmEnd").value || start;
-      if(!dest || !start) return showToast("출장지와 기간을 입력하세요.");
-      if(start.slice(0,4)!==end.slice(0,4)) return showLoginError("연도 오류", `출장 기간이 연도를 넘길 수 없습니다.\n${start.slice(0,4)}년과 ${end.slice(0,4)}년을 각각 나누어 입력해 주세요.`);
+      if(!dest || !start) return showToast(t("toast_tripRequired"));
+      if(start.slice(0,4)!==end.slice(0,4)) return showLoginError(t("err_yearCross_title"),t("err_yearCrossTrip_msg")(start.slice(0,4),end.slice(0,4)));
       const originalEvent = editId ? events.find(ev => String(ev.id) === editId) : null;
       const adminCreatorEmail=!editId?document.getElementById("tripCreatorEmail").value:null;
       const adminCreator=adminCreatorEmail?employeeDirectory.find(person=>person.email===adminCreatorEmail):null;
       const tripOwner = adminCreator || (originalEvent ? employeeDirectory.find(p=>p.email===originalEvent.creatorEmail)||{name:originalEvent.creator,email:originalEvent.creatorEmail} : currentUser);
-      if(hasDuplicateTrip(start,end,tripOwner.name,tripOwner.email,editId||null)) return showLoginError("출장 중복", `${tripOwner.name}님은 해당 기간에 이미 등록된 출장이 있습니다.\n(등록자 또는 동행자로 포함된 출장)`);
+      if(hasDuplicateTrip(start,end,tripOwner.name,tripOwner.email,editId||null)) return showLoginError(t("err_tripDup_title"),t("err_tripDup_msg")(dispName(tripOwner)||tripOwner.name));
       const companionNames=(document.getElementById("tmCompanions").value||"").split(",").map(s=>s.trim()).filter(Boolean);
       const conflictCompanion = companionNames.find(name=>{
         const emp=employeeDirectory.find(p=>p.name===name);
         return hasDuplicateTrip(start,end,name,emp?.email||"",editId||null);
       });
-      if(conflictCompanion) return showLoginError("동행자 출장 중복", `동행자 ${conflictCompanion}님은 해당 기간에 이미 등록된 출장이 있습니다.\n(등록자 또는 동행자로 포함된 출장을 확인해 주세요)`);
+      if(conflictCompanion) return showLoginError(t("err_companionDup_title"),t("err_companionDup_msg")(dispCreator(conflictCompanion)));
       const item = {
         id: editId ? (isNaN(Number(editId)) ? editId : Number(editId)) : Date.now(),
         type: "trip", date: start, endDate: end, time: "",
@@ -3186,8 +3989,11 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         tripArea: document.getElementById("tmDomesticBtn").dataset.active === '0' ? "해외" : "국내",
         isOutwork: document.getElementById("tmIsOutwork").checked
       };
-      if(editId) events = events.map(ev => String(ev.id) === editId ? item : ev);
-      else events.push(item);
+      if(editId) {
+        const before=events.find(ev=>String(ev.id)===editId);
+        sbAuditLog("edit_trip",editId,before,item);
+        events=events.map(ev=>String(ev.id)===editId?item:ev);
+      } else events.push(item);
       save(); renderAll(); renderTripPage();
       const _refreshEmail = adminCreatorEmail || (editId ? (events.find(ev=>String(ev.id)===editId)||item).creatorEmail : null);
       if(isAdmin(currentUser) && document.getElementById("page-trips-admin")?.classList.contains("active")) {
@@ -3199,7 +4005,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       }
       document.getElementById("tripCreatorEmail").value="";
       document.getElementById("tripModal").classList.remove("open");
-      showToast(editId ? "출장이 수정되었습니다." : adminCreator ? `${adminCreator.name}님의 출장으로 등록되었습니다.` : "출장이 등록되었습니다.");
+      showToast(editId ? t("toast_tripEdited") : adminCreator ? `${dispName(adminCreator)||adminCreator.name} ${t("toast_tripRegistered")}` : t("toast_tripRegistered"));
     });
     document.getElementById("tripYearFilter").addEventListener("change", renderTripPage);
     document.getElementById("tripSearch").addEventListener("input", renderTripPage);
@@ -3251,6 +4057,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const editingEmail = document.getElementById("editingEmployeeEmail").value;
       const dept=document.getElementById("employeeDept").value.trim();
       const name=document.getElementById("employeeName").value.trim();
+      const nameEn=document.getElementById("employeeNameEn")?.value.trim()||"";
       const position=document.getElementById("employeePosition").value.trim();
       const email=document.getElementById("employeeEmail").value.trim().toLowerCase();
       const role=document.getElementById("employeeRole").value;
@@ -3260,7 +4067,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         const idx = employeeDirectory.findIndex(p=>p.email===editingEmail);
         if(idx===-1) return;
         const wasActive = employeeDirectory[idx].status !== "퇴사";
-        employeeDirectory[idx]={...employeeDirectory[idx],dept,name,position,email,role,status};
+        employeeDirectory[idx]={...employeeDirectory[idx],dept,name,nameEn,position,email,role,status};
         if(status==="퇴사"&&wasActive) {
           const session=sessionStorage.getItem("imecSession");
           if(session===editingEmail||session===email) { sessionStorage.removeItem("imecSession"); }
@@ -3270,7 +4077,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         showToast(`${name} 직원 정보가 수정되었습니다.`);
       } else {
         if(employeeDirectory.some(p=>p.email.toLowerCase()===email)) return showLoginError("직원 중복","이미 등록된 이메일입니다.");
-        employeeDirectory.push({id:Date.now(),dept,name,position,email,role,status:"재직"});
+        employeeDirectory.push({id:Date.now(),dept,name,nameEn,position,email,role,status:"재직"});
         passwordStore[email]=DEFAULT_PASSWORD;
         sbSavePassword(email,DEFAULT_PASSWORD);
         saveEmployees(); updateDeptFilter(); renderAll();
@@ -3329,6 +4136,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         const pi="padding:5px 8px;font-size:11px;color:var(--muted)";
         if(isEditing) return `<tr class="employee-editing-row" style="background:#f8faf8">
           <td style="${td}"><input value="${p.name}" id="ie_name" style="width:70px;padding:4px 6px;font-size:12px"></td>
+          <td style="${td}"><input value="${p.nameEn||""}" id="ie_nameEn" placeholder="English name" style="width:110px;padding:4px 6px;font-size:11px;color:var(--muted)"></td>
           <td style="${td}"><input value="${p.dept}" id="ie_dept" style="width:80px;padding:4px 6px;font-size:12px"></td>
           <td style="${td}"><input value="${p.position||""}" id="ie_pos" style="width:60px;padding:4px 6px;font-size:12px"></td>
           <td style="${td}"><span style="font-size:12px;color:var(--muted)">${p.email}</span></td>
@@ -3336,9 +4144,9 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
           <td style="${td}"><select id="ie_status" style="padding:4px 6px;font-size:12px"><option${(p.status||"재직")==="재직"?" selected":""}>재직</option><option${p.status==="퇴사"?" selected":""}>퇴사</option></select></td>
           <td style="${td};text-align:center"><input type="checkbox" id="ie_notify" ${p.notifyTarget?"checked":""} style="accent-color:var(--green);width:15px;height:15px;cursor:pointer" title="근태 통보 대상"></td>
           <td style="${td};white-space:nowrap">
-            <button class="action-btn" style="background:var(--green);color:#fff;border-color:var(--green)" onclick="saveInlineEmployee('${p.email}')">저장</button>
-            <button class="action-btn" onclick="cancelInlineEdit()">취소</button>
-            <button class="action-btn" style="color:#c0392b;border-color:#c0392b" onclick="confirmDeleteEmployee('${p.email}','${p.name}')">삭제</button>
+            <button class="action-btn" style="background:var(--green);color:#fff;border-color:var(--green)" onclick="saveInlineEmployee('${p.email}')">${t("act_save")}</button>
+            <button class="action-btn" onclick="cancelInlineEdit()">${t("act_cancel")}</button>
+            <button class="action-btn" style="color:#c0392b;border-color:#c0392b" onclick="confirmDeleteEmployee('${p.email}','${p.name}')">${t("act_delete")}</button>
           </td>
           <td style="${pi}">${prof.phone||"-"}</td>
           <td style="${pi}">${prof.birth||"-"}</td>
@@ -3349,6 +4157,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         </tr>`;
         return `<tr>
           <td style="${td}"><div style="display:flex;align-items:center;gap:6px"><div class="avatar" style="background:hsl(${30+i*31} 58% 84%);width:22px;height:22px;font-size:10px;flex-shrink:0">${initials(p.name)}</div><strong>${p.name}</strong></div></td>
+          <td style="${td};color:var(--muted);font-size:11px">${p.nameEn||"-"}</td>
           <td style="${td}">${p.dept}</td>
           <td style="${td}">${p.position||"-"}</td>
           <td style="${td};color:var(--muted);font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis">${p.email}</td>
@@ -3356,10 +4165,10 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
           <td style="${td}"><span class="status ${p.status==="퇴사"?"locked":""}" style="font-size:11px">${p.status||"재직"}</span></td>
           <td style="${td};text-align:center"><input type="checkbox" ${p.notifyTarget?"checked":""} disabled style="accent-color:var(--green);width:15px;height:15px;opacity:0.55;cursor:default" title="수정 버튼으로 변경 가능"></td>
           <td style="${td};white-space:nowrap">
-            <button class="action-btn" style="margin-right:4px" onclick="startInlineEdit('${p.email}')">수정</button>
+            <button class="action-btn" style="margin-right:4px" onclick="startInlineEdit('${p.email}')">${t("act_edit")}</button>
             ${p.status==="퇴사"
-              ? `<button class="action-btn" style="color:var(--green);border-color:var(--green)" onclick="restoreEmployee('${p.email}')">복원</button>`
-              : `<button class="action-btn" onclick="resetEmployeePassword('${p.email}')">비번초기화</button>`
+              ? `<button class="action-btn" style="color:var(--green);border-color:var(--green)" onclick="restoreEmployee('${p.email}')">${t("status_active")}</button>`
+              : `<button class="action-btn" onclick="resetEmployeePassword('${p.email}')">PW reset</button>`
             }
           </td>
           <td style="${pi}">${prof.phone||"-"}</td>
@@ -3369,7 +4178,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
           <td style="${pi}">${prof.emergencyRelation||"-"}</td>
           <td style="${pi}">${prof.emergencyPhone||"-"}</td>
         </tr>`;
-      }).join("")||`<tr><td colspan="14" class="empty">직원이 없습니다.</td></tr>`;
+      }).join("")||`<tr><td colspan="15" class="empty">${t("gen_noData")}</td></tr>`;
       requestAnimationFrame(updateEmpMgmtScrollWidth);
     }
     setupEmpMgmtScrollSync();
@@ -3393,13 +4202,14 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
     window.saveInlineEmployee = email => {
       const p = employeeDirectory.find(x => x.email === email); if(!p) return;
       const name = document.getElementById("ie_name")?.value.trim();
+      const nameEn = document.getElementById("ie_nameEn")?.value.trim()||"";
       const dept = document.getElementById("ie_dept")?.value.trim();
       const pos  = document.getElementById("ie_pos")?.value.trim();
       const role = document.getElementById("ie_role")?.value;
       const status = document.getElementById("ie_status")?.value;
       const notifyTarget = document.getElementById("ie_notify")?.checked || false;
       if(!name || !dept) return showToast("이름과 부서는 필수입니다.");
-      Object.assign(p, {name, dept, position: pos, role, status, notifyTarget});
+      Object.assign(p, {name, nameEn, dept, position: pos, role, status, notifyTarget});
       saveEmployees(); updateDeptFilter(); renderAll();
       _inlineEditEmail = null; renderEmpMgmtTable();
       showToast(`${name} 정보가 저장됐습니다.`);
@@ -3410,6 +4220,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       document.getElementById("editingEmployeeEmail").value=email;
       document.getElementById("employeeDept").value=p.dept;
       document.getElementById("employeeName").value=p.name;
+      if(document.getElementById("employeeNameEn")) document.getElementById("employeeNameEn").value=p.nameEn||"";
       document.getElementById("employeePosition").value=p.position||"";
       document.getElementById("employeeEmail").value=p.email;
       document.getElementById("employeeEmail").readOnly=true;
@@ -3494,16 +4305,16 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const targetEmail = window._adminAddLeaveEmail || window._adminEditingCreatorEmail || currentUser.email;
       const targetPerson = employeeDirectory.find(p=>p.email===targetEmail) || currentUser;
       const id=Number(document.getElementById("leaveId").value), start=document.getElementById("leaveStart").value, end=document.getElementById("leaveEnd").value;
-      if(new Date(end)<new Date(start)) return showToast("종료일은 시작일보다 빠를 수 없습니다.");
-      if(start.slice(0,4)!==end.slice(0,4)) return showLoginError("연도 오류", `연차 기간이 연도를 넘길 수 없습니다.\n${start.slice(0,4)}년과 ${end.slice(0,4)}년을 각각 나누어 입력해 주세요.`);
-      if(isPast(start)&&!adminMode) return showToast("오늘 이전 날짜에는 새 연차를 등록할 수 없습니다.");
-      if(!isCurrentYearRange(start,end)&&!adminMode) return showToast("너무 먼 날짜에는 연차를 입력할 수 없습니다.");
+      if(new Date(end)<new Date(start)) return showToast(t("toast_endBeforeStart"));
+      if(start.slice(0,4)!==end.slice(0,4)) return showLoginError(t("err_yearCross_title"),t("err_yearCrossLeave_msg")(start.slice(0,4),end.slice(0,4)));
+      if(isPast(start)&&!adminMode) return showToast(t("toast_pastLeave"));
+      if(!isCurrentYearRange(start,end)&&!adminMode) return showToast(t("toast_farDate"));
       const days=Number(document.getElementById("leaveDays").value);
       const leaveType=document.getElementById("leaveType").value;
-      if(!days&&leaveDayValues[leaveType]!==0) return showToast("선택한 기간에 차감할 영업일이 없습니다.");
+      if(!days&&leaveDayValues[leaveType]!==0) return showToast(t("toast_noWorkdays"));
       const leaveReason=document.getElementById("leaveReason").value.trim();
-      if(leaveType==="공가"&&!leaveReason) return showToast(`${leaveType} 선택 시 사유를 입력해 주세요.`);
-      if(hasDuplicateLeave(start,end,id||null,targetEmail)) return showLoginError("연차 중복", `${targetPerson.name}님의 해당 기간에 이미 등록된 연차가 있습니다.`);
+      if(leaveType==="공가"&&!leaveReason) return showToast(t("err_reasonRequired")(leaveType));
+      if(hasDuplicateLeave(start,end,id||null,targetEmail)) return showLoginError(t("err_leaveDup_title"),t("err_leaveDup_msg")(dispName(targetPerson)||targetPerson.name));
       const previous=id?leaves.find(item=>item.id===id):null;
       const item={
         id:id||Date.now(),
@@ -3520,26 +4331,26 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const refreshEmail = window._adminEditingCreatorEmail || window._adminAddLeaveEmail;
       if(refreshEmail) renderAdminEmployeeLeaves(refreshEmail);
       window._adminEditingCreatorEmail=null; window._adminAddLeaveEmail=null;
-      showToast(id?"연차 일정이 수정되었습니다.":"연차가 등록되었습니다.");
+      showToast(id?t("toast_leaveEdited"):t("toast_leaveRegistered"));
     });
     document.getElementById("eventForm").addEventListener("submit", e=>{
       e.preventDefault();
       const type=document.getElementById("eventType").value;
       const start=document.getElementById("eventStart").value;
-      if(type==="leave"&&isPast(start)&&!isAdmin(currentUser)) return showToast(editingEventKey?"오늘 이전 날짜 연차는 수정할 수 없습니다.":"오늘 이전 날짜에는 새 연차를 등록할 수 없습니다.");
+      if(type==="leave"&&isPast(start)&&!isAdmin(currentUser)) return showToast(editingEventKey?t("toast_pastLeaveEdit"):t("toast_pastLeave"));
       const editingKind=editingEventKey?.split(":")[0]||null;
       const editingId=editingEventKey?.split(":")[1]||null;
       if(type==="leave") {
         const leaveType=document.getElementById("eventLeaveType").value;
         const end=document.getElementById("eventEnd").value;
-        if(new Date(end)<new Date(start)) return showToast("종료 날짜는 시작 날짜보다 빠를 수 없습니다.");
-        if(start.slice(0,4)!==end.slice(0,4)) return showLoginError("연도 오류", `연차 기간이 연도를 넘길 수 없습니다.\n${start.slice(0,4)}년과 ${end.slice(0,4)}년을 각각 나누어 입력해 주세요.`);
-        if(!isCurrentYearRange(start,end)) return showToast("너무 먼 날짜에는 연차를 입력할 수 없습니다.");
+        if(new Date(end)<new Date(start)) return showToast(t("toast_endBeforeStart"));
+        if(start.slice(0,4)!==end.slice(0,4)) return showLoginError(t("err_yearCross_title"),t("err_yearCrossLeave_msg")(start.slice(0,4),end.slice(0,4)));
+        if(!isCurrentYearRange(start,end)) return showToast(t("toast_farDate"));
         const skipId=editingKind==="leave"?Number(editingId):null;
-        if(hasDuplicateLeave(start,end,skipId)) return showLoginError("연차 중복", "이미 입력되어있는 연차가 있습니다");
+        if(hasDuplicateLeave(start,end,skipId)) return showLoginError(t("err_leaveDup_title"),t("err_leaveDup2_msg"));
         const days=Number(document.getElementById("eventLeaveDays").value);
-        if(!days&&leaveType!=="공가") return showToast("선택한 기간에 차감할 영업일이 없습니다.");
-        if(!canUseLeaveDays(days,skipId)) return showLoginError("연차 한도 초과", `사용 완료 연차와 사용 예정 연차의 합계가 총 부여 연차 ${employeeStats(currentUser).granted.toFixed(1)}일을 초과하여 입력할 수 없습니다.`);
+        if(!days&&leaveType!=="공가") return showToast(t("toast_noWorkdays"));
+        if(!canUseLeaveDays(days,skipId)) return showLoginError(t("err_leaveLimit_title"),t("err_leaveLimit_msg")(employeeStats(currentUser).granted.toFixed(1)));
         const original=editingKind==="leave"?leaves.find(item=>String(item.id)===editingId):null;
         const leaveItem={id:editingKind==="leave"?Number(editingId):Date.now(),type:leaveType,start,end,days,reason:document.getElementById("eventLeaveReason").value.trim(),creator:original?.creator||currentUser.name,creatorEmail:original?.creatorEmail||currentUser.email,updatedAt:new Date().toISOString()};
         if(editingKind==="leave") leaves=leaves.map(item=>String(item.id)===editingId?leaveItem:item);
@@ -3551,11 +4362,11 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         if(window._adminAddLeaveEmail) { renderAdminEmployeeLeaves(window._adminAddLeaveEmail); window._adminAddLeaveEmail=null; }
         const wasEditing=Boolean(editingEventKey);
         editingEventKey=null; leaveOnlyMode=false;
-        return showToast(wasEditing?`${leaveType} 일정이 수정되었습니다.`:`${leaveType} 일정이 등록되었습니다.`);
+        return showToast(wasEditing?t("toast_leaveEdited"):t("toast_leaveRegistered"));
       }
       const end=type==="trip"?document.getElementById("eventEnd").value:start;
-      if(new Date(end)<new Date(start)) return showToast("출장 종료 날짜는 시작 날짜보다 빠를 수 없습니다.");
-      if(type==="trip" && start.slice(0,4)!==end.slice(0,4)) return showLoginError("연도 오류", `출장 기간이 연도를 넘길 수 없습니다.\n${start.slice(0,4)}년과 ${end.slice(0,4)}년을 각각 나누어 입력해 주세요.`);
+      if(new Date(end)<new Date(start)) return showToast(t("toast_endBeforeStart"));
+      if(type==="trip" && start.slice(0,4)!==end.slice(0,4)) return showLoginError(t("err_yearCross_title"),t("err_yearCrossTrip_msg")(start.slice(0,4),end.slice(0,4)));
       const emailAttendeesWithNames=selectedAttendees.filter(person=>person.sendEmail).map(person=>({name:person.name,email:person.email}));
       const emailRecipients=emailAttendeesWithNames.map(person=>person.email);
       const people=selectedAttendees.map(person=>person.name);
@@ -3575,12 +4386,9 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       save(); renderAll(); e.target.closest(".modal-backdrop").classList.remove("open");
       const sbConnected=!!getSupabase();
       if(emailRecipients.length) {
-        showToast(wasEditing
-          ? `일정이 수정되었습니다.${sbConnected?" (DB 동기화됨)":""}`
-          : `일정 등록 완료 · ${emailRecipients.length}명에게 ${sbConnected?"오전 8시에 메일이 발송됩니다.":"메일 예약됩니다. (메일 설정 확인 필요)"}`
-        );
+        showToast(wasEditing ? t("toast_eventEdited") : t("toast_eventRegistered"));
       } else {
-        showToast(wasEditing?"일정이 수정되었습니다.":"공유 일정이 등록되었습니다.");
+        showToast(wasEditing?t("toast_eventEdited"):t("toast_eventRegistered"));
       }
     });
     document.getElementById("leaveType").addEventListener("change",updateLegacyLeaveDays);
@@ -3596,8 +4404,8 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const email=`${loginId}@imecs.co.kr`;
       const password=document.getElementById("loginPassword").value;
       const user=employeeDirectory.find(person=>person.email.toLowerCase()===email);
-      if(!user) return showLoginError("등록되지 않은 아이디입니다","회사 직원 명단에 등록된 아이디인지 확인해 주세요.");
-      if(user.status === "퇴사") return showLoginError("접속 불가", "퇴사 처리된 계정입니다. 관리자에게 문의하세요.");
+      if(!user) return showLoginError(t("err_unknownUser_title"),t("err_unknownUser_msg"));
+      if(user.status === "퇴사") return showLoginError(t("err_retired_title"),t("err_retired_msg"));
       const sb=getSupabase();
       if(sb) {
         const {data:ok,error}=await sb.rpc("verify_password",{p_email:email,p_password:password});
@@ -3607,17 +4415,17 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
           if(okDefault && password===DEFAULT_PASSWORD) {
             completeLogin(user);
             forcePasswordChange=true; openModal("passwordModal");
-            showToast("초기 비밀번호를 본인 비밀번호로 변경해 주세요.");
+            showToast(t("toast_pwInitial"));
           } else {
-            return showLoginError("비밀번호가 틀렸습니다","비밀번호 초기화는 관리자에게 문의하세요.");
+            return showLoginError(t("err_wrongPw_title"),t("err_wrongPw_msg"));
           }
         } else {
           completeLogin(user);
           const {data:isDefault}=await sb.rpc("verify_password",{p_email:email,p_password:DEFAULT_PASSWORD});
-          if(isDefault) { forcePasswordChange=true; openModal("passwordModal"); showToast("초기 비밀번호를 본인 비밀번호로 변경해 주세요."); }
+          if(isDefault) { forcePasswordChange=true; openModal("passwordModal"); showToast(t("toast_pwInitial")); }
         }
       } else {
-        return showLoginError("서버 연결 오류","Supabase 연결을 확인해 주세요.");
+        return showLoginError(t("err_serverError_title"),t("err_serverError_msg"));
       }
       e.target.reset();
     });
@@ -3631,19 +4439,19 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const current=document.getElementById("currentPassword").value;
       const next=document.getElementById("newPassword").value;
       const confirmPassword=document.getElementById("confirmPassword").value;
-      if(next!==confirmPassword) return showToast("새 비밀번호가 서로 일치하지 않습니다.");
-      if(next.length<8) return showToast("비밀번호는 8자 이상이어야 합니다.");
+      if(next!==confirmPassword) return showToast(t("toast_pwMismatch"));
+      if(next.length<8) return showToast(t("toast_pwTooShort"));
       const sb=getSupabase();
       if(sb) {
         const {data:ok}=await sb.rpc("verify_password",{p_email:currentUser.email,p_password:current});
-        if(!ok) return showLoginError("비밀번호가 틀렸습니다","현재 비밀번호를 다시 확인해 주세요.");
+        if(!ok) return showLoginError(t("err_wrongPw_title"),t("err_wrongPwCurrent_msg"));
         await sbSavePassword(currentUser.email,next);
       } else {
-        return showLoginError("서버 연결 오류","Supabase 연결을 확인해 주세요.");
+        return showLoginError(t("err_serverError_title"),t("err_serverError_msg"));
       }
       forcePasswordChange=false;
       e.target.reset(); e.target.closest(".modal-backdrop").classList.remove("open");
-      showToast("비밀번호가 변경되었습니다.");
+      showToast(t("toast_pwChanged"));
     });
     function formatPhoneInput(value) {
       const d=value.replace(/\D/g,"").slice(0,11);
@@ -3667,7 +4475,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       };
       profileStore[currentUser.email]=profile;
       sbSaveProfile(currentUser.email,profile);
-      showToast("개인 정보가 저장되었습니다.");
+      showToast(t("toast_profileSaved"));
     });
 
 
@@ -3691,16 +4499,16 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const type = document.getElementById("lfType").value;
       const editId = document.getElementById("leaveFormModalForm").dataset.editId;
       const skipId = editId ? Number(editId) : null;
-      if(!start || !end || end < start) { errEl.textContent = "휴가 기간을 확인해 주세요."; errEl.style.display = ""; return; }
-      if(start.slice(0,4)!==end.slice(0,4)) { errEl.textContent = `연차 기간이 연도를 넘길 수 없습니다. ${start.slice(0,4)}년과 ${end.slice(0,4)}년을 각각 나누어 입력해 주세요.`; errEl.style.display = ""; return; }
-      if(isPast(start) && !isAdmin(currentUser)) { errEl.textContent = "오늘 이전 날짜에는 연차를 신청할 수 없습니다."; errEl.style.display = ""; return; }
-      if(!isCurrentYearRange(start, end)) { errEl.textContent = "너무 먼 날짜에는 연차를 신청할 수 없습니다."; errEl.style.display = ""; return; }
-      if(hasDuplicateLeave(start, end, skipId)) { errEl.textContent = "이미 입력된 연차가 있습니다."; errEl.style.display = ""; return; }
+      if(!start || !end || end < start) { errEl.textContent = t("err_lf_period"); errEl.style.display = ""; return; }
+      if(start.slice(0,4)!==end.slice(0,4)) { errEl.textContent = t("err_lf_yearCross")(start.slice(0,4),end.slice(0,4)); errEl.style.display = ""; return; }
+      if(isPast(start) && !isAdmin(currentUser)) { errEl.textContent = t("err_lf_past"); errEl.style.display = ""; return; }
+      if(!isCurrentYearRange(start, end)) { errEl.textContent = t("err_lf_farDate"); errEl.style.display = ""; return; }
+      if(hasDuplicateLeave(start, end, skipId)) { errEl.textContent = t("err_lf_dup"); errEl.style.display = ""; return; }
       const days = updateLfDays();
-      if(!days && leaveDayValues[type]!==0) { errEl.textContent = "선택한 기간에 차감할 영업일이 없습니다."; errEl.style.display = ""; return; }
-      if(!canUseLeaveDays(days, skipId)) { errEl.textContent = `총 부여 연차 ${employeeStats(currentUser).granted.toFixed(1)}일을 초과합니다.`; errEl.style.display = ""; return; }
+      if(!days && leaveDayValues[type]!==0) { errEl.textContent = t("err_lf_noWorkdays"); errEl.style.display = ""; return; }
+      if(!canUseLeaveDays(days, skipId)) { errEl.textContent = t("err_lf_limit")(employeeStats(currentUser).granted.toFixed(1)); errEl.style.display = ""; return; }
       const reason = document.getElementById("lfReason").value.trim();
-      if((type==="공가"||type==="기타") && !reason) { errEl.textContent = `${type} 선택 시 사유를 입력해 주세요.`; errEl.style.display = ""; return; }
+      if((type==="공가"||type==="기타") && !reason) { errEl.textContent = t("err_lf_reason")(type); errEl.style.display = ""; return; }
       const emergency = composeEmergencyContact(
         document.getElementById("lfEmergencyName").value,
         document.getElementById("lfEmergencyRelation").value,
@@ -3723,13 +4531,16 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
 
     document.getElementById("leaveConfirmYes").addEventListener("click", () => {
       if(!_pendingLeaveItem) return;
-      if(_pendingLeaveEditId) leaves = leaves.map(l => String(l.id) === _pendingLeaveEditId ? _pendingLeaveItem : l);
-      else leaves.push(_pendingLeaveItem);
+      if(_pendingLeaveEditId) {
+        const before=leaves.find(l=>String(l.id)===_pendingLeaveEditId);
+        sbAuditLog("edit_leave",_pendingLeaveEditId,before,_pendingLeaveItem);
+        leaves=leaves.map(l=>String(l.id)===_pendingLeaveEditId?_pendingLeaveItem:l);
+      } else leaves.push(_pendingLeaveItem);
       save(); renderAll();
       document.getElementById("leaveConfirmModal").classList.remove("open");
       document.getElementById("leaveFormModal").classList.remove("open");
       _pendingLeaveItem = null; _pendingLeaveEditId = null;
-      showToast("연차 신청이 완료됐습니다.");
+      showToast(t("toast_leaveApplied"));
     });
 
     document.getElementById("leaveConfirmNo").addEventListener("click", () => {
@@ -3780,6 +4591,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         sessionStorage.removeItem("imecSession");
       }
       renderAll();
+      applyLang();
     }
     initApp();
 
