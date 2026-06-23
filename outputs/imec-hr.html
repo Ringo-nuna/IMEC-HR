@@ -1838,8 +1838,9 @@
       document.getElementById("upcomingList").innerHTML = upcoming.length ? upcoming.map(e=>{
         const d = new Date(e.date+"T00:00:00");
         const color = e.type==="leave"?"#68ad83":"#f0a35c";
+        const creator = esc(e.creator||"");
         return `<div class="event-item"><div class="event-date">${d.toLocaleDateString("ko-KR",{month:"short"})}<strong>${d.getDate()}</strong></div>
-          <i class="event-stripe" style="background:${color}"></i><div class="event-main"><strong>${e.title}</strong><small>${e.time||"종일"} · ${e.location||"장소 미정"}</small></div>
+          <i class="event-stripe" style="background:${color}"></i><div class="event-main"><strong>${esc(e.title)}</strong><small>${creator ? creator+" · " : ""}${e.time||"종일"} · ${e.location||"장소 미정"}</small></div>
           <span class="tag ${typeClass(e.type,e)}">${typeLabel(e.type)}</span></div>`;
       }).join("") : `<div class="empty">다가오는 일정이 없습니다.</div>`;
     }
