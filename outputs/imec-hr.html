@@ -1044,7 +1044,8 @@
                 <span style="color:#164f46">create table if not exists</span> imec_passwords (email text <span style="color:#164f46">primary key</span>, password text);<br>
                 <span style="color:#164f46">create table if not exists</span> imec_annual_leave (year int, email text, granted numeric, <span style="color:#164f46">primary key</span> (year, email));<br>
                 <span style="color:#164f46">create table if not exists</span> imec_holidays (date text <span style="color:#164f46">primary key</span>, name text);<br>
-                <span style="color:#164f46">create table if not exists</span> imec_profiles (email text <span style="color:#164f46">primary key</span>, phone text, birth text, address text, emergency_name text, emergency_relation text, emergency_phone text);<br><br>
+                <span style="color:#164f46">create table if not exists</span> imec_profiles (email text <span style="color:#164f46">primary key</span>, phone text, birth text, address text, emergency_name text, emergency_relation text, emergency_phone text);<br>
+                <span style="color:#164f46">create table if not exists</span> imec_audit_log (id bigserial <span style="color:#164f46">primary key</span>, actor_email text, action text, target_id text, before_data jsonb, after_data jsonb, created_at timestamptz <span style="color:#164f46">default</span> now());<br><br>
                 <span style="color:#697676">-- RLS 활성화 (모든 테이블)</span><br>
                 <span style="color:#164f46">alter table</span> imec_employees <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_employees <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);<br>
                 <span style="color:#164f46">alter table</span> imec_leaves <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_leaves <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);<br>
@@ -1053,7 +1054,8 @@
                 <span style="color:#164f46">alter table</span> imec_passwords <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_passwords <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);<br>
                 <span style="color:#164f46">alter table</span> imec_annual_leave <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_annual_leave <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);<br>
                 <span style="color:#164f46">alter table</span> imec_holidays <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_holidays <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);<br>
-                <span style="color:#164f46">alter table</span> imec_profiles <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_profiles <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);
+                <span style="color:#164f46">alter table</span> imec_profiles <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_profiles <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);<br>
+                <span style="color:#164f46">alter table</span> imec_audit_log <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_audit_log <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);
               </div>
               <div style="margin-top:14px;background:var(--canvas);border-radius:10px;padding:16px;font-size:12px;font-family:monospace;line-height:2;color:var(--muted)">
                 <strong style="color:var(--ink);font-size:12px">GitHub Actions Secrets (6개)</strong><br><br>
@@ -2141,7 +2143,10 @@
       const anonKey = cfg.anonKey || SUPABASE_EMBED_KEY;
       if(!url || !anonKey || url.includes("__") || anonKey.includes("__")) return null;
       if(!_sbClient || _sbClient._url !== url) {
-        _sbClient = supabase.createClient(url, anonKey);
+        // persistSession:false → Edge Tracking Prevention의 localStorage 차단 우회
+        _sbClient = supabase.createClient(url, anonKey, {
+          auth: { persistSession: false, autoRefreshToken: false }
+        });
         _sbClient._url = url;
       }
       return _sbClient;
@@ -2154,9 +2159,10 @@
         .then(({error})=>{ if(error) console.warn(`[SB] ${table} upsert:`,error.message); });
     }
     function sbDel(table, col, val) {
-      const sb=getSupabase(); if(!sb) return;
+      const sb=getSupabase();
+      if(!sb) { console.warn(`[SB] ${table} delete: Supabase 미연결 (getSupabase=null)`); return; }
       sb.from(table).delete().eq(col,val)
-        .then(({error})=>{ if(error) console.warn(`[SB] ${table} delete:`,error.message); });
+        .then(({error})=>{ if(error) console.warn(`[SB] ${table} delete 오류:`,error.message,error); else console.log(`[SB] ${table} delete 성공: ${col}=${val}`); });
     }
     function leavesToRows(arr) {
       return arr.map(l=>({id:String(l.id),type:l.type,start_date:l.start,end_date:l.end,days:l.days,reason:l.reason||null,creator:l.creator,creator_email:l.creatorEmail||null,emergency_contact:l.emergencyContact||null,notes:l.notes||null,submitted_at:l.submittedAt||null,updated_at:l.updatedAt||null}));
@@ -2197,16 +2203,31 @@
     function sbDelEvent(id) { sbDel("imec_events","id",String(id)); }
 
     async function sbAuditLog(action, targetId, beforeData, afterData) {
-      const sb=getSupabase(); if(!sb) return;
+      const sb=getSupabase();
+      console.log("[AuditLog] called:", action, "/ sb:", !!sb, "/ before:", !!beforeData, "/ after:", !!afterData);
+      if(!sb) return;
+      // 복잡한 필드 제거 후 저장 (attendeesJson 등 중첩 객체 직렬화 오류 방지)
+      const clean = obj => {
+        if(!obj) return null;
+        // attendeesJson 등 복잡한 배열 제외, undefined 값 제외
+        const r={};
+        for(const [k,v] of Object.entries(obj)){
+          if(v===undefined||k==="attendeesJson") continue;
+          r[k]=v;
+        }
+        return r;
+      };
       try {
-        await sb.from("imec_audit_log").insert({
+        const {error}=await sb.from("imec_audit_log").insert({
           actor_email: currentUser?.email||"unknown",
           action,
           target_id: String(targetId),
-          before_data: beforeData||null,
-          after_data: afterData||null
+          before_data: clean(beforeData),
+          after_data: clean(afterData)
         });
-      } catch(e) {}
+        if(error) console.warn("[AuditLog]", action, "오류:", error.message, error);
+        else console.log("[AuditLog] 저장 성공:", action);
+      } catch(e) { console.warn("[AuditLog] 예외:", e); }
     }
 
     window.showAuditLog = async () => {
@@ -2228,7 +2249,15 @@
         const {data,error}=await sb.from("imec_audit_log").select("*").order("created_at",{ascending:false}).limit(200);
         if(error||!data){document.getElementById("auditLogBody").innerHTML="<p style='color:#c0392b'>로드 실패. Supabase에 imec_audit_log 테이블이 있는지 확인하세요.</p>";return;}
         if(!data.length){document.getElementById("auditLogBody").innerHTML="<p style='color:var(--muted)'>아직 기록된 로그가 없습니다.</p>";return;}
-        const actionLabel=a=>({delete_leave:"연차 삭제",edit_leave:"연차 수정",delete_trip:"출장 삭제",edit_trip:"출장 수정"}[a]||a);
+        const actionLabel=a=>{
+          if(a==="create_leave") return "연차 등록";
+          if(a==="edit_leave") return "연차 수정";
+          if(a==="delete_leave") return "연차 삭제";
+          if(a==="create_trip") return "출장 등록";
+          if(a==="edit_trip") return "출장 수정";
+          if(a==="delete_trip") return "출장 삭제";
+          return a;
+        };
         document.getElementById("auditLogBody").innerHTML=`<table style="width:100%;font-size:12px;border-collapse:collapse;min-width:580px">
           <thead><tr style="background:var(--canvas)">
             <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)">시각</th>
@@ -3253,12 +3282,14 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       }).join(""):`<tr><td colspan="11" class="empty">${t("gen_noData")}</td></tr>`;
     }
     window.adminDeleteTrip = (id, email) => {
-      const t=events.find(e=>String(e.id)===String(id));
-      if(!t) return;
-      if(!confirm(`${t.location||t.title} 출장을 삭제할까요?`)) return;
-      sbAuditLog("delete_trip",id,t,null);
+      const trip=events.find(e=>String(e.id)===String(id));
+      if(!trip) return;
+      if(!confirm(`${trip.location||trip.title} 출장을 삭제할까요?`)) return;
+      sbAuditLog("delete_trip",id,trip,null);
       events=events.filter(e=>String(e.id)!==String(id));
-      sbDelEvent(id); save(); renderAll(); renderAdminTrips(); showAdminTripDetail(email);
+      // upsert 경쟁 방지: 삭제 시 save() 생략, delete만 Supabase에 전송
+      localStorage.setItem("imecEvents",JSON.stringify(events)); _lastSyncAt=Date.now();
+      sbDelEvent(id); setTimeout(()=>sbDelEvent(id),3000); renderAll(); renderAdminTrips(); showAdminTripDetail(email);
       showToast(t("toast_tripDeleted"));
     };
     window.startPayEdit = tripId => {
@@ -3282,20 +3313,24 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const ev=events.find(e=>String(e.id)===String(tripId));
       if(ev) ev.paymentStatus=val;
       const sb=getSupabase();
-      if(sb) sb.from("imec_events").update({payment_status:val||null}).eq("id",String(tripId));
+      if(sb) sb.from("imec_events").update({payment_status:val||null}).eq("id",String(tripId))
+        .then(({error})=>{ if(error) console.warn("[SB] payment_status 오류:",error.message); });
       localStorage.setItem("imecEvents",JSON.stringify(events));
+      _lastSyncAt=Date.now(); // 자동싱크가 저장 직후 덮어쓰지 않도록
       const email=document.getElementById("adminTripDetail")?.dataset?.email||"";
       renderAdminTrips();
       if(email) showAdminTripDetail(email);
       showToast("출장비 지급 상태를 저장했습니다.");
     };
     window.deleteTripEvent = id => {
-      const t=events.find(e=>String(e.id)===String(id));
-      if(!t||!canManageEvent(t)) return showToast(t("toast_onlyCreatorOrAdmin"));
-      if(!confirm(`${t.title} 출장을 삭제할까요?`)) return;
-      sbAuditLog("delete_trip",id,t,null);
+      const trip=events.find(e=>String(e.id)===String(id));
+      if(!trip||!canManageEvent(trip)) return showToast(t("toast_onlyCreatorOrAdmin"));
+      if(!confirm(`${trip.title} 출장을 삭제할까요?`)) return;
+      sbAuditLog("delete_trip",id,trip,null);
       events=events.filter(e=>String(e.id)!==String(id));
-      sbDelEvent(id); save(); renderAll(); renderTripPage();
+      // save() 제거: upsert는 삭제된 행을 지우지 않으므로 delete만 Supabase에 전송
+      localStorage.setItem("imecEvents",JSON.stringify(events)); _lastSyncAt=Date.now();
+      sbDelEvent(id); setTimeout(()=>sbDelEvent(id),3000); renderAll(); renderTripPage();
       showToast(t("toast_tripDeleted"));
     };
     function renderTripAttendeeResults(query="") {
@@ -3990,17 +4025,22 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         const item=leaves.find(leave=>String(leave.id)===id);
         if(!item) return;
         if(!confirm(`${formatDate(item.start)} 연차를 삭제할까요?`)) return;
+        sbAuditLog("delete_leave",id,item,null);
         leaves=leaves.filter(leave=>String(leave.id)!==id);
         sbDelLeave(id);
       } else if(target.type==="trip") {
         const item=events.find(event=>String(event.id)===id);
         if(!item || !confirm(`${item.title} 일정을 삭제할까요?`)) return;
+        sbAuditLog("delete_trip",id,item,null);
         events=events.filter(event=>String(event.id)!==id);
-        sbDelEvent(id);
+        sbDelEvent(id); setTimeout(()=>sbDelEvent(id),3000);
       } else {
         return showLoginError(t("err_noDeleteOther_title"),t("err_noDeleteOther_msg"));
       }
-      save(); renderAll();
+      localStorage.setItem("imecEvents",JSON.stringify(events));
+      localStorage.setItem("imecLeaves",JSON.stringify(leaves));
+      _lastSyncAt=Date.now();
+      renderAll();
       document.getElementById("eventDetailModal").classList.remove("open");
       showToast(t("toast_eventDeleted"));
     };
@@ -4112,7 +4152,10 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         const before=events.find(ev=>String(ev.id)===editId);
         sbAuditLog("edit_trip",editId,before,item);
         events=events.map(ev=>String(ev.id)===editId?item:ev);
-      } else events.push(item);
+      } else {
+        sbAuditLog("create_trip",item.id,null,item);
+        events.push(item);
+      }
       save(); renderAll(); renderTripPage();
       const _refreshEmail = adminCreatorEmail || (editId ? (events.find(ev=>String(ev.id)===editId)||item).creatorEmail : null);
       if(isAdmin(currentUser) && document.getElementById("page-trips-admin")?.classList.contains("active")) {
@@ -4453,7 +4496,13 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         adminAdded: previous?.adminAdded || (adminMode && targetEmail!==currentUser.email ? true : undefined),
         updatedAt: new Date().toISOString()
       };
-      if(id) leaves=leaves.map(l=>l.id===id?item:l); else leaves.push(item);
+      if(id) {
+        sbAuditLog("edit_leave",id,previous,item);
+        leaves=leaves.map(l=>l.id===id?item:l);
+      } else {
+        sbAuditLog("create_leave",item.id,null,item);
+        leaves.push(item);
+      }
       save(); renderAll(); e.target.closest(".modal-backdrop").classList.remove("open");
       const refreshEmail = window._adminEditingCreatorEmail || window._adminAddLeaveEmail;
       if(refreshEmail) renderAdminEmployeeLeaves(refreshEmail);
@@ -4480,9 +4529,12 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         if(!canUseLeaveDays(days,skipId)) return showLoginError(t("err_leaveLimit_title"),t("err_leaveLimit_msg")(employeeStats(currentUser).granted.toFixed(1)));
         const original=editingKind==="leave"?leaves.find(item=>String(item.id)===editingId):null;
         const leaveItem={id:editingKind==="leave"?Number(editingId):Date.now(),type:leaveType,start,end,days,reason:document.getElementById("eventLeaveReason").value.trim(),creator:original?.creator||currentUser.name,creatorEmail:original?.creatorEmail||currentUser.email,updatedAt:new Date().toISOString()};
-        if(editingKind==="leave") leaves=leaves.map(item=>String(item.id)===editingId?leaveItem:item);
-        else {
+        if(editingKind==="leave") {
+          sbAuditLog("edit_leave",editingId,original,leaveItem);
+          leaves=leaves.map(item=>String(item.id)===editingId?leaveItem:item);
+        } else {
           if(editingKind==="event") events=events.filter(item=>String(item.id)!==editingId);
+          sbAuditLog("create_leave",leaveItem.id,null,leaveItem);
           leaves.push(leaveItem);
         }
         save(); renderAll(); e.target.closest(".modal-backdrop").classList.remove("open");
@@ -4662,7 +4714,10 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         const before=leaves.find(l=>String(l.id)===_pendingLeaveEditId);
         sbAuditLog("edit_leave",_pendingLeaveEditId,before,_pendingLeaveItem);
         leaves=leaves.map(l=>String(l.id)===_pendingLeaveEditId?_pendingLeaveItem:l);
-      } else leaves.push(_pendingLeaveItem);
+      } else {
+        sbAuditLog("create_leave",_pendingLeaveItem.id,null,_pendingLeaveItem);
+        leaves.push(_pendingLeaveItem);
+      }
       save(); renderAll();
       document.getElementById("leaveConfirmModal").classList.remove("open");
       document.getElementById("leaveFormModal").classList.remove("open");
