@@ -2206,7 +2206,20 @@
       sb.from("imec_annual_leave").delete().eq("email",email);
     }
     function sbDelLeave(id) { sbDel("imec_leaves","id",String(id)); }
-    function sbDelEvent(id) { sbDel("imec_events","id",String(id)); }
+    async function sbDelEvent(id) {
+      const sb=getSupabase();
+      if(!sb) throw new Error("Supabase 연결 없음");
+      const {error}=await sb.from("imec_events").delete().eq("id",String(id));
+      if(error) throw error;
+      console.log(`[SB] imec_events delete 완료: id=${id}`);
+    }
+    async function sbDelLeaveAsync(id) {
+      const sb=getSupabase();
+      if(!sb) throw new Error("Supabase 연결 없음");
+      const {error}=await sb.from("imec_leaves").delete().eq("id",String(id));
+      if(error) throw error;
+      console.log(`[SB] imec_leaves delete 완료: id=${id}`);
+    }
 
     async function sbAuditLog(action, targetId, beforeData, afterData) {
       const sb=getSupabase();
@@ -2921,12 +2934,15 @@
       updateLegacyLeaveDays();
       openModal("leaveModal");
     };
-    window.adminDeleteLeave = (id, creatorEmail) => {
+    window.adminDeleteLeave = async (id, creatorEmail) => {
       const l=leaves.find(x=>String(x.id)===String(id)); if(!l) return;
       if(!confirm(`${formatDate(l.start)} ${l.type}을(를) 삭제할까요?`)) return;
+      try { await sbDelLeaveAsync(id); } catch(error) {
+        return showLoginError("연차 삭제 실패",`서버에서 연차를 삭제하지 못했습니다.\n${error.message||"다시 시도해 주세요."}`);
+      }
       sbAuditLog("delete_leave",id,l,null);
       leaves=leaves.filter(x=>String(x.id)!==String(id));
-      sbDelLeave(id); save(); renderAll();
+      save(); renderAll();
       renderAdminEmployeeLeaves(creatorEmail);
       showToast(t("toast_leaveDeleted"));
     };
@@ -3286,15 +3302,20 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         </tr>`;
       }).join(""):`<tr><td colspan="11" class="empty">${t("gen_noData")}</td></tr>`;
     }
-    window.adminDeleteTrip = (id, email) => {
+    window.adminDeleteTrip = async (id, email) => {
       const trip=events.find(e=>String(e.id)===String(id));
       if(!trip) return;
       if(!confirm(`${trip.location||trip.title} 출장을 삭제할까요?`)) return;
+      try {
+        await sbDelEvent(id);
+      } catch(error) {
+        console.error("출장 삭제 실패:",error);
+        return showLoginError("출장 삭제 실패",`서버에서 출장을 삭제하지 못했습니다.\n${error.message||"다시 시도해 주세요."}`);
+      }
       sbAuditLog("delete_trip",id,trip,null);
       events=events.filter(e=>String(e.id)!==String(id));
-      // upsert 경쟁 방지: 삭제 시 save() 생략, delete만 Supabase에 전송
       localStorage.setItem("imecEvents",JSON.stringify(events)); _lastSyncAt=Date.now();
-      sbDelEvent(id); setTimeout(()=>sbDelEvent(id),3000); renderAll(); renderAdminTrips(); showAdminTripDetail(email);
+      renderAll(); renderAdminTrips(); showAdminTripDetail(email);
       showToast(t("toast_tripDeleted"));
     };
     window.startPayEdit = tripId => {
@@ -3327,15 +3348,20 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       if(email) showAdminTripDetail(email);
       showToast("출장비 지급 상태를 저장했습니다.");
     };
-    window.deleteTripEvent = id => {
+    window.deleteTripEvent = async id => {
       const trip=events.find(e=>String(e.id)===String(id));
       if(!trip||!canManageEvent(trip)) return showToast(t("toast_onlyCreatorOrAdmin"));
       if(!confirm(`${trip.title} 출장을 삭제할까요?`)) return;
+      try {
+        await sbDelEvent(id);
+      } catch(error) {
+        console.error("출장 삭제 실패:",error);
+        return showLoginError("출장 삭제 실패",`서버에서 출장을 삭제하지 못했습니다.\n${error.message||"다시 시도해 주세요."}`);
+      }
       sbAuditLog("delete_trip",id,trip,null);
       events=events.filter(e=>String(e.id)!==String(id));
-      // save() 제거: upsert는 삭제된 행을 지우지 않으므로 delete만 Supabase에 전송
       localStorage.setItem("imecEvents",JSON.stringify(events)); _lastSyncAt=Date.now();
-      sbDelEvent(id); setTimeout(()=>sbDelEvent(id),3000); renderAll(); renderTripPage();
+      renderAll(); renderTripPage();
       showToast(t("toast_tripDeleted"));
     };
     function renderTripAttendeeResults(query="") {
@@ -3965,13 +3991,15 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       if(!l || (isPast(l.start)&&!isAdmin(currentUser))) return showToast(t("err_lockedLeaveEdit"));
       openLeaveFormModal(String(id));
     };
-    window.deleteLeave = id => {
+    window.deleteLeave = async id => {
       const l=leaves.find(x=>x.id===id);
       if(!l || (isPast(l.start)&&!isAdmin(currentUser))) return showToast(t("err_lockedLeaveDelete"));
-      if(confirm(`${formatDate(l.start)} 연차를 삭제할까요?`)) {
-        sbAuditLog("delete_leave",id,l,null);
-        leaves=leaves.filter(x=>x.id!==id); sbDelLeave(id); save(); renderAll(); showToast(t("toast_leaveEventDeleted"));
+      if(!confirm(`${formatDate(l.start)} 연차를 삭제할까요?`)) return;
+      try { await sbDelLeaveAsync(id); } catch(error) {
+        return showLoginError("연차 삭제 실패",`서버에서 연차를 삭제하지 못했습니다.\n${error.message||"다시 시도해 주세요."}`);
       }
+      sbAuditLog("delete_leave",id,l,null);
+      leaves=leaves.filter(x=>x.id!==id); save(); renderAll(); showToast(t("toast_leaveEventDeleted"));
     };
     function setActiveEventType(type) {
       document.getElementById("eventType").value=type;
@@ -4022,7 +4050,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         showLoginError(t("err_noEditOther_title"),t("err_noEditOther_msg"));
       }
     };
-    window.deleteCalendarEvent = key => {
+    window.deleteCalendarEvent = async key => {
       const [kind,id]=key.split(":");
       const target=allCalendarEvents().find(item=>item.eventKey===key);
       if(!validateCalendarEventAction(target)) return;
@@ -4030,15 +4058,24 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         const item=leaves.find(leave=>String(leave.id)===id);
         if(!item) return;
         if(!confirm(`${formatDate(item.start)} 연차를 삭제할까요?`)) return;
+        try {
+          await sbDelLeaveAsync(id);
+        } catch(error) {
+          return showLoginError("연차 삭제 실패",`서버에서 연차를 삭제하지 못했습니다.\n${error.message||"다시 시도해 주세요."}`);
+        }
         sbAuditLog("delete_leave",id,item,null);
         leaves=leaves.filter(leave=>String(leave.id)!==id);
-        sbDelLeave(id);
       } else if(target.type==="trip") {
         const item=events.find(event=>String(event.id)===id);
         if(!item || !confirm(`${item.title} 일정을 삭제할까요?`)) return;
+        try {
+          await sbDelEvent(id);
+        } catch(error) {
+          console.error("출장 삭제 실패:",error);
+          return showLoginError("출장 삭제 실패",`서버에서 출장을 삭제하지 못했습니다.\n${error.message||"다시 시도해 주세요."}`);
+        }
         sbAuditLog("delete_trip",id,item,null);
         events=events.filter(event=>String(event.id)!==id);
-        sbDelEvent(id); setTimeout(()=>sbDelEvent(id),3000);
       } else {
         return showLoginError(t("err_noDeleteOther_title"),t("err_noDeleteOther_msg"));
       }
