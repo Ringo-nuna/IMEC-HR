@@ -920,8 +920,13 @@
         <section class="page admin-only" id="page-employees">
           <div class="headline">
             <div><p class="eyebrow">Admin</p><h1>직원 관리</h1><p class="sub">직원 등록, 수정, 퇴사 처리를 합니다.</p></div>
-            <div style="display:flex;gap:8px">
-              <button id="empAuditBtn" class="secondary" onclick="showAuditLog()" style="font-size:12px">로그 보기</button>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:0;border:1px solid #a3cfbb;border-radius:8px;overflow:hidden;background:#e8f5ed">
+                <select id="backupYearFilter" class="filter-select" style="font-size:12px;padding:6px 10px;border:none;background:transparent;color:#164f46;border-radius:0"></select>
+                <div style="width:1px;height:24px;background:#a3cfbb"></div>
+                <button onclick="backupAll()" style="font-size:12px;padding:6px 12px;background:transparent;color:#164f46;border:none;cursor:pointer;font-weight:600;white-space:nowrap">↓ 일괄 백업</button>
+              </div>
+              <button id="empAuditBtn" class="secondary" onclick="showAuditLog()" style="font-size:12px">로그 확인</button>
               <button id="empCsvBtn" class="secondary" onclick="exportEmployeeCsv()">↓ CSV 다운로드</button>
             </div>
           </div>
@@ -3550,6 +3555,59 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       showToast(`${year}년 전사 출장 현황 CSV를 다운로드했습니다.`);
     };
 
+    // ── 일괄 백업 ─────────────────────────────────────────────────
+    function todayStamp() {
+      return `${TODAY.getFullYear()}${String(TODAY.getMonth()+1).padStart(2,"0")}${String(TODAY.getDate()).padStart(2,"0")}`;
+    }
+    (function initBackupYearFilter() {
+      // 직원 관리 탭 진입 시 연도 필터 초기화 (renderEmpMgmtTable 이후 호출)
+      const tryInit = () => {
+        const yf=document.getElementById("backupYearFilter"); if(!yf||yf.options.length) return;
+        Array.from({length:6},(_,i)=>TODAY.getFullYear()-i).forEach(y=>{
+          const o=document.createElement("option"); o.value=y; o.textContent=y+"년";
+          if(y===TODAY.getFullYear()) o.selected=true; yf.appendChild(o);
+        });
+      };
+      document.addEventListener("DOMContentLoaded", tryInit);
+      // navigate("employees") 시에도 호출되도록 전역 노출
+      window._initBackupYearFilter = tryInit;
+    })();
+    window.backupAll = async () => {
+      if(!window.XLSX) return showToast("Excel 라이브러리를 로드 중입니다. 잠시 후 다시 시도해주세요.");
+      const year=Number(document.getElementById("backupYearFilter")?.value||TODAY.getFullYear());
+      showToast("백업 파일 생성 중...");
+      const wb=XLSX.utils.book_new();
+      // 시트1: 연차
+      const leaveHeader=["이름","부서","휴가종류","시작일","종료일","사용일수","사유","상태"];
+      const leaveRows=leaves.filter(l=>new Date(l.start+"T00:00:00").getFullYear()===year)
+        .sort((a,b)=>a.start.localeCompare(b.start))
+        .map(l=>{const emp=employeeDirectory.find(p=>p.email===l.creatorEmail);return[l.creator,emp?.dept||"",l.type,l.start,l.end,Number(l.days).toFixed(1),l.reason||"",isPast(l.start)?"사용완료":"사용예정"];});
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([leaveHeader,...leaveRows]),"연차");
+      // 시트2: 출장
+      const payStore=getPaymentStore();
+      const tripHeader=["등록자","부서","국내/해외","출장지","외근","시작일","종료일","동행자","Order NO#","Order 내용","출장 내용","출장비 지급"];
+      const tripRows=events.filter(e=>e.type==="trip"&&new Date(e.date+"T00:00:00").getFullYear()===year)
+        .sort((a,b)=>a.date.localeCompare(b.date))
+        .map(t=>{const emp=employeeDirectory.find(p=>p.email===t.creatorEmail);return[t.creator,emp?.dept||"",t.tripArea||"국내",t.location||t.title.replace(/ 출장(\(외근\))?$/,""),t.isOutwork?"외근":"",t.date,t.endDate||t.date,t.companions||"",t.orderNumber||"",t.poNumber||"",t.tripDesc||"",payStore[String(t.id)]||"해당사항없음"];});
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([tripHeader,...tripRows]),"출장");
+      // 시트3: 직원
+      const empHeader=["이름","영문명","부서","직급","이메일","권한","상태","전화번호","생년월일","주소","비상연락처이름","관계","비상연락처"];
+      const empRows=employeeDirectory.map(p=>{const prof=profileStore[p.email]||{};return[p.name,p.nameEn||"",p.dept,p.position||"",p.email,p.role,p.status||"재직",prof.phone||"",prof.birth||"",prof.address||"",prof.emergencyName||"",prof.emergencyRelation||"",prof.emergencyPhone||""];});
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([empHeader,...empRows]),"직원");
+      // 시트4: 로그 (Supabase에서 비동기 로드)
+      try {
+        const sb=getSupabase();
+        if(sb){
+          const {data}=await sb.from("imec_audit_log").select("*").order("created_at",{ascending:false}).limit(500);
+          const logHeader=["시각","사용자","작업","대상ID","변경 전 내용"];
+          const logRows=(data||[]).map(r=>[new Date(r.created_at).toLocaleString("ko-KR"),r.actor_email||"",r.action||"",r.target_id||"",r.before_data?JSON.stringify(r.before_data):""]);
+          XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([logHeader,...logRows]),"로그");
+        }
+      } catch(e){}
+      XLSX.writeFile(wb,`IMEC_백업_${year}_${todayStamp()}.xlsx`);
+      showToast(`${year}년 데이터 백업 완료 (연차·출장·직원·로그).xlsx`);
+    };
+
     let pendingSubmitLeaveId = null;
     window.openLeaveSubmitModal = id => {
       const l = leaves.find(x => String(x.id) === String(id));
@@ -3823,7 +3881,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       if((page==="team"||page==="trips-admin"||page==="holidays") && currentRole!=="admin") { showToast(t("toast_adminOnly")); return; }
       if(page==="trips") renderTripPage();
       if(page==="trips-admin") renderAdminTrips();
-      if(page==="employees") renderEmpMgmtTable();
+      if(page==="employees"){ renderEmpMgmtTable(); window._initBackupYearFilter?.(); }
       document.querySelectorAll(".page").forEach(el=>el.classList.toggle("active",el.id===`page-${page}`));
       document.querySelectorAll(".nav button").forEach(el=>el.classList.toggle("active",el.dataset.page===page));
       document.getElementById("sidebar").classList.remove("open");
