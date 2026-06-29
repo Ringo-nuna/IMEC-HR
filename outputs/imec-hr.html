@@ -2353,11 +2353,10 @@
     // ─────────────────────────────────────────────────────────────────
 
     const save = () => {
+      // Supabase upsert는 각 수정 지점에서 개별 항목만 처리 (전체 upsert 시 다른 사용자 변경사항 덮어쓰기 방지)
       localStorage.setItem("imecLeaves", JSON.stringify(leaves));
       localStorage.setItem("imecEvents", JSON.stringify(events));
-      _lastSyncAt = Date.now(); // sbUp 완료 전 sync 덮어쓰기 방지
-      sbUp("imec_leaves",leavesToRows(leaves));
-      sbUp("imec_events",eventsToRows(events));
+      _lastSyncAt = Date.now();
     };
     const showToast = msg => {
       const toast = document.getElementById("toast");
@@ -4077,7 +4076,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
     document.getElementById("leaveSubmitConfirmBtn").addEventListener("click",()=>{
       if(!pendingSubmitLeaveId) return;
       const l = leaves.find(x => String(x.id) === pendingSubmitLeaveId);
-      if(l) { l.submittedAt = l.submittedAt || new Date().toISOString(); save(); }
+      if(l) { l.submittedAt = l.submittedAt || new Date().toISOString(); sbUp("imec_leaves", leavesToRows([l])); save(); }
       document.getElementById("leaveSubmitModal").classList.remove("open");
       pendingSubmitLeaveId = null;
       renderLeaveTable();
@@ -4156,7 +4155,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         sbAuditLog("create_trip",item.id,null,item);
         events.push(item);
       }
-      save(); renderAll(); renderTripPage();
+      sbUp("imec_events", eventsToRows([item])); save(); renderAll(); renderTripPage();
       const _refreshEmail = adminCreatorEmail || (editId ? (events.find(ev=>String(ev.id)===editId)||item).creatorEmail : null);
       if(isAdmin(currentUser) && document.getElementById("page-trips-admin")?.classList.contains("active")) {
         renderAdminTrips();
@@ -4503,7 +4502,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         sbAuditLog("create_leave",item.id,null,item);
         leaves.push(item);
       }
-      save(); renderAll(); e.target.closest(".modal-backdrop").classList.remove("open");
+      sbUp("imec_leaves", leavesToRows([item])); save(); renderAll(); e.target.closest(".modal-backdrop").classList.remove("open");
       const refreshEmail = window._adminEditingCreatorEmail || window._adminAddLeaveEmail;
       if(refreshEmail) renderAdminEmployeeLeaves(refreshEmail);
       window._adminEditingCreatorEmail=null; window._adminAddLeaveEmail=null;
@@ -4537,7 +4536,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
           sbAuditLog("create_leave",leaveItem.id,null,leaveItem);
           leaves.push(leaveItem);
         }
-        save(); renderAll(); e.target.closest(".modal-backdrop").classList.remove("open");
+        sbUp("imec_leaves", leavesToRows([leaveItem])); save(); renderAll(); e.target.closest(".modal-backdrop").classList.remove("open");
         if(window._adminAddLeaveEmail) { renderAdminEmployeeLeaves(window._adminAddLeaveEmail); window._adminAddLeaveEmail=null; }
         const wasEditing=Boolean(editingEventKey);
         editingEventKey=null; leaveOnlyMode=false;
@@ -4562,7 +4561,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       }
       const wasEditing=Boolean(editingEventKey);
       editingEventKey=null; leaveOnlyMode=false;
-      save(); renderAll(); e.target.closest(".modal-backdrop").classList.remove("open");
+      sbUp("imec_events", eventsToRows([item])); save(); renderAll(); e.target.closest(".modal-backdrop").classList.remove("open");
       const sbConnected=!!getSupabase();
       if(emailRecipients.length) {
         showToast(wasEditing ? t("toast_eventEdited") : t("toast_eventRegistered"));
@@ -4718,7 +4717,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         sbAuditLog("create_leave",_pendingLeaveItem.id,null,_pendingLeaveItem);
         leaves.push(_pendingLeaveItem);
       }
-      save(); renderAll();
+      sbUp("imec_leaves", leavesToRows([_pendingLeaveItem])); save(); renderAll();
       document.getElementById("leaveConfirmModal").classList.remove("open");
       document.getElementById("leaveFormModal").classList.remove("open");
       _pendingLeaveItem = null; _pendingLeaveEditId = null;
