@@ -2181,8 +2181,14 @@
       showToast(`${p.name} 근태통보 ${checked?"설정":"해제"}`);
     };
     async function sbSavePassword(email,pw) {
-      const sb=getSupabase(); if(!sb) return;
-      await sb.rpc("upsert_password",{p_email:email,p_password:pw});
+      const sb=getSupabase();
+      if(!sb) throw new Error("Supabase 연결 없음");
+      const {data,error}=await sb.rpc("upsert_password",{p_email:email,p_password:pw});
+      if(error) {
+        console.error("비밀번호 저장 실패:",error);
+        throw error;
+      }
+      return data;
     }
     function sbSaveAnnualLeave(year,email,granted) {
       localStorage.setItem("imecAnnualLeave",JSON.stringify(annualLeaveStore));
@@ -4621,9 +4627,23 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       if(next.length<8) return showToast(t("toast_pwTooShort"));
       const sb=getSupabase();
       if(sb) {
-        const {data:ok}=await sb.rpc("verify_password",{p_email:currentUser.email,p_password:current});
+        const {data:ok,error:verifyError}=await sb.rpc("verify_password",{p_email:currentUser.email,p_password:current});
+        if(verifyError) {
+          console.error("현재 비밀번호 검증 실패:",verifyError);
+          return showLoginError(t("err_serverError_title"),t("err_serverError_msg"));
+        }
         if(!ok) return showLoginError(t("err_wrongPw_title"),t("err_wrongPwCurrent_msg"));
-        await sbSavePassword(currentUser.email,next);
+        try {
+          await sbSavePassword(currentUser.email,next);
+          const {data:saved,error:saveVerifyError}=await sb.rpc("verify_password",{p_email:currentUser.email,p_password:next});
+          if(saveVerifyError||!saved) {
+            console.error("비밀번호 저장 후 검증 실패:",saveVerifyError||"검증 결과 false");
+            return showLoginError("비밀번호 변경 실패","비밀번호 저장을 확인할 수 없습니다. 다시 시도해 주세요.");
+          }
+        } catch(error) {
+          console.error("비밀번호 변경 실패:",error);
+          return showLoginError("비밀번호 변경 실패","비밀번호가 저장되지 않았습니다. 다시 시도해 주세요.");
+        }
       } else {
         return showLoginError(t("err_serverError_title"),t("err_serverError_msg"));
       }
