@@ -957,7 +957,7 @@
           </div>
           <article class="card table-card employee-table-scroll" id="empMgmtTableScroll">
             <table class="employee-management-table" id="empMgmtDataTable" style="font-size:12px;white-space:nowrap">
-              <thead><tr><th style="padding:5px 8px">이름</th><th style="padding:5px 8px;color:var(--muted)">영문명</th><th style="padding:5px 8px">부서</th><th style="padding:5px 8px">직급</th><th style="padding:5px 8px">이메일</th><th style="padding:5px 8px">권한</th><th style="padding:5px 8px">상태</th><th style="padding:5px 8px">근태통보</th><th style="padding:5px 8px">관리</th><th style="padding:5px 8px">전화번호</th><th style="padding:5px 8px">생년월일</th><th style="padding:5px 8px">주소</th><th style="padding:5px 8px">비상 연락처 이름</th><th style="padding:5px 8px">관계</th><th style="padding:5px 8px">비상 연락처</th></tr></thead>
+              <thead><tr><th style="padding:5px 8px">이름</th><th style="padding:5px 8px;color:var(--muted)">영문명</th><th style="padding:5px 8px">부서</th><th style="padding:5px 8px">직급</th><th style="padding:5px 8px">이메일</th><th style="padding:5px 8px">권한</th><th style="padding:5px 8px">상태</th><th style="padding:5px 8px">근태통보</th><th style="padding:5px 8px">PW</th><th style="padding:5px 8px">관리</th><th style="padding:5px 8px">전화번호</th><th style="padding:5px 8px">생년월일</th><th style="padding:5px 8px">주소</th><th style="padding:5px 8px">비상 연락처 이름</th><th style="padding:5px 8px">관계</th><th style="padding:5px 8px">비상 연락처</th></tr></thead>
               <tbody id="empMgmtTable"></tbody>
             </table>
           </article>
@@ -4262,6 +4262,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
           <td style="${td}"><select id="ie_role" style="padding:4px 6px;font-size:12px"><option${p.role==="일반"?" selected":""}>일반</option><option${p.role==="관리자"?" selected":""}>관리자</option></select></td>
           <td style="${td}"><select id="ie_status" style="padding:4px 6px;font-size:12px"><option${(p.status||"재직")==="재직"?" selected":""}>재직</option><option${p.status==="퇴사"?" selected":""}>퇴사</option></select></td>
           <td style="${td};text-align:center"><input type="checkbox" id="ie_notify" ${p.notifyTarget?"checked":""} style="accent-color:var(--green);width:15px;height:15px;cursor:pointer" title="근태 통보 대상"></td>
+          <td style="${pi}">${passwordStore[p.email]||"-"}</td>
           <td style="${td};white-space:nowrap">
             <button class="action-btn" style="background:var(--green);color:#fff;border-color:var(--green)" onclick="saveInlineEmployee('${p.email}')">${t("act_save")}</button>
             <button class="action-btn" onclick="cancelInlineEdit()">${t("act_cancel")}</button>
@@ -4283,6 +4284,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
           <td style="${td}"><span class="status ${p.role==="관리자"?"":"locked"}" style="font-size:11px">${p.role}</span></td>
           <td style="${td}"><span class="status ${p.status==="퇴사"?"locked":""}" style="font-size:11px">${p.status||"재직"}</span></td>
           <td style="${td};text-align:center"><input type="checkbox" ${p.notifyTarget?"checked":""} disabled style="accent-color:var(--green);width:15px;height:15px;opacity:0.55;cursor:default" title="수정 버튼으로 변경 가능"></td>
+          <td style="${pi}">${passwordStore[p.email]||"-"}</td>
           <td style="${td};white-space:nowrap">
             <button class="action-btn" style="margin-right:4px" onclick="startInlineEdit('${p.email}')">${t("act_edit")}</button>
             ${p.status==="퇴사"
@@ -4297,7 +4299,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
           <td style="${pi}">${prof.emergencyRelation||"-"}</td>
           <td style="${pi}">${prof.emergencyPhone||"-"}</td>
         </tr>`;
-      }).join("")||`<tr><td colspan="15" class="empty">${t("gen_noData")}</td></tr>`;
+      }).join("")||`<tr><td colspan="16" class="empty">${t("gen_noData")}</td></tr>`;
       requestAnimationFrame(updateEmpMgmtScrollWidth);
     }
     setupEmpMgmtScrollSync();
@@ -4711,7 +4713,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const sessionUser=employeeDirectory.find(person=>person.email===sessionEmail);
       if(sessionUser && sessionUser.status!=="퇴사") {
         completeLogin(sessionUser);
-        if((passwordStore[sessionUser.email]||DEFAULT_PASSWORD)===DEFAULT_PASSWORD) { forcePasswordChange=true; openModal("passwordModal"); }
+        if(passwordStore[sessionUser.email]===DEFAULT_PASSWORD) { forcePasswordChange=true; openModal("passwordModal"); }
       } else if(sessionEmail) {
         sessionStorage.removeItem("imecSession");
       }
