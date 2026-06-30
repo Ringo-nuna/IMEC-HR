@@ -3446,14 +3446,14 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
                   <td style="padding:7px 10px;border:1px solid var(--line)">${td.poNumber||"-"}</td>
                   <td style="padding:7px 10px;border:1px solid var(--line);max-width:200px;white-space:pre-wrap">${td.tripDesc||"-"}</td>
                   <td style="padding:7px 10px;border:1px solid var(--line);text-align:center">
-                    <select id="pay_${td.id}" disabled style="font-size:11px;padding:2px 4px;border:1px solid var(--line);border-radius:4px;${payColor}">
+                    <select id="pay_${td.id}" style="font-size:11px;padding:2px 4px;border:1px solid var(--line);border-radius:4px;${payColor}" onchange="savePayment('${td.id}')">
                       <option value="해당사항없음" ${payVal==="해당사항없음"?"selected":""}>해당사항없음</option>
                       <option value="작업중" ${payVal==="작업중"?"selected":""}>작업중</option>
                       <option value="지급완료" ${payVal==="지급완료"?"selected":""}>지급완료</option>
                     </select>
                   </td>
-                  <td id="mg_${td.id}" style="padding:7px 10px;border:1px solid var(--line);text-align:center;white-space:nowrap">
-                    <button class="action-btn" style="font-size:11px;padding:2px 8px" onclick="startPayEdit('${td.id}')">수정</button>
+                  <td style="padding:7px 10px;border:1px solid var(--line);text-align:center;white-space:nowrap">
+                    <button class="action-btn" style="font-size:11px;padding:2px 8px" onclick="openTripModal('${td.id}','${td.creatorEmail||""}')">수정</button>
                     <button class="action-btn" style="font-size:11px;padding:2px 8px" onclick="adminDeleteTrip('${td.id}','${email}')">삭제</button>
                   </td>
                 </tr>`;
