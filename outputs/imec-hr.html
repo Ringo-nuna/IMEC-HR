@@ -690,6 +690,7 @@
         <button data-page="trips-admin" class="admin-only"><span>⊞</span> 전사 출장 현황</button>
         <button data-page="employees" class="admin-only"><span>☰</span> 직원 관리</button>
         <button data-page="holidays" class="admin-only"><span>✦</span> 공휴일 관리</button>
+        <button data-page="emailjs" class="admin-only"><span>⚙</span> 설정</button>
       </nav>
       <div class="side-card">
         <p>나의 연차 사용률</p>
@@ -988,84 +989,21 @@
           </article>
         </section>
 
-        <section class="page admin-only" id="page-emailjs" style="display:none!important">
-          <div>
+        <section class="page admin-only" id="page-emailjs">
+          <div class="headline">
+            <div><p class="eyebrow">Admin settings</p><h1>설정</h1><p class="sub">이메일 알림을 설정합니다.</p></div>
+          </div>
           <article class="card" style="padding:28px;max-width:600px">
-            <form id="emailjsForm">
-              <p style="margin:0 0 18px;font-size:13px;font-weight:700;color:var(--green)">Supabase 연결 키</p>
-              <div class="field" style="margin-bottom:16px">
-                <label for="ejsPublicKey">Project URL</label>
-                <input id="ejsPublicKey" placeholder="https://xxxxxxxxxxxx.supabase.co" autocomplete="off" type="url">
-              </div>
-              <div class="field" style="margin-bottom:20px">
-                <label for="ejsServiceId">Anon (public) Key</label>
-                <input id="ejsServiceId" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." autocomplete="off">
-              </div>
-              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-                <button class="primary" type="submit">저장 &amp; 연결</button>
-                <button class="secondary" type="button" id="ejsTestBtn">연결 테스트</button>
-                <span id="ejsStatus" style="font-size:12px;color:var(--muted)"></span>
-              </div>
-              <div style="margin-top:14px;padding:14px;background:var(--canvas);border-radius:10px;font-size:12px">
-                <p style="margin:0 0 8px;font-weight:600;color:var(--ink)">직원 공유 링크</p>
-                <p style="margin:0 0 10px;color:var(--muted)">저장 후 아래 버튼으로 설정이 포함된 링크를 복사해 직원들에게 공유하세요. 직원들이 이 링크로 접속하면 자동 연결됩니다.</p>
-                <button class="secondary" type="button" id="copyShareLinkBtn">🔗 직원 공유 링크 복사</button>
-              </div>
-            </form>
-            <div style="display:none">
-              <p style="margin:0 0 12px;font-size:13px;font-weight:700">전체 설정 순서</p>
-              <ol style="margin:0;padding-left:18px;font-size:12px;color:var(--muted);line-height:2.1">
-                <li><strong style="color:var(--ink)">supabase.com</strong> 무료 계정 → New Project 생성</li>
-                <li>SQL Editor에서 아래 테이블 생성 쿼리 실행</li>
-                <li>Project Settings → API 에서 URL과 anon key 복사 → 위에 입력 후 저장</li>
-                <li><strong style="color:var(--ink)">github.com</strong> 무료 계정 → 새 Repository 생성 후 이 프로젝트 파일 업로드</li>
-                <li>Repository → Settings → Secrets → Actions 에서 아래 6개 시크릿 등록</li>
-                <li>Netlify에서 GitHub Repository 연결 → <code style="background:var(--canvas);padding:1px 5px;border-radius:4px">hr.imec.com</code> 도메인 설정</li>
-              </ol>
-              <div style="margin-top:16px;background:var(--canvas);border-radius:10px;padding:16px;font-size:12px;font-family:monospace;line-height:1.8;color:var(--muted)">
-                <strong style="color:var(--ink);font-size:12px">Supabase SQL (한 번만 실행)</strong><br><br>
-                <span style="color:#697676">-- 8개 테이블 생성</span><br>
-                <span style="color:#164f46">create table if not exists</span> imec_employees (id bigint <span style="color:#164f46">primary key</span>, dept text, name text, email text unique, role text, position text, status text <span style="color:#164f46">default</span> '재직');<br>
-                <span style="color:#164f46">alter table</span> imec_employees <span style="color:#164f46">add column if not exists</span> position text;<br>
-                <span style="color:#164f46">alter table</span> imec_employees <span style="color:#164f46">add column if not exists</span> status text <span style="color:#164f46">default</span> '재직';<br>
-                <span style="color:#164f46">create table if not exists</span> imec_leaves (id text <span style="color:#164f46">primary key</span>, type text, start_date text, end_date text, days numeric, reason text, creator text, creator_email text, emergency_contact text, notes text, submitted_at text);<br>
-                <span style="color:#164f46">create table if not exists</span> imec_events (id text <span style="color:#164f46">primary key</span>, type text, date text, end_date text, time text, title text, location text, creator text, creator_email text, companions text, attendees text, attendees_json text, po_number text, order_number text, trip_desc text);<br>
-                <span style="color:#697676">-- 기존 테이블에 새 컬럼 추가 (이미 테이블이 있는 경우)</span><br>
-                <span style="color:#164f46">alter table</span> imec_leaves <span style="color:#164f46">add column if not exists</span> emergency_contact text;<br>
-                <span style="color:#164f46">alter table</span> imec_leaves <span style="color:#164f46">add column if not exists</span> notes text;<br>
-                <span style="color:#164f46">alter table</span> imec_leaves <span style="color:#164f46">add column if not exists</span> submitted_at text;<br>
-                <span style="color:#164f46">alter table</span> imec_events <span style="color:#164f46">add column if not exists</span> po_number text;<br>
-                <span style="color:#164f46">alter table</span> imec_events <span style="color:#164f46">add column if not exists</span> order_number text;<br>
-                <span style="color:#164f46">alter table</span> imec_events <span style="color:#164f46">add column if not exists</span> trip_desc text;<br>
-                <span style="color:#164f46">alter table</span> imec_events <span style="color:#164f46">add column if not exists</span> trip_area text;<br>
-                <span style="color:#164f46">alter table</span> imec_events <span style="color:#164f46">add column if not exists</span> is_outwork boolean <span style="color:#164f46">default</span> false;<br>
-                <span style="color:#164f46">alter table</span> imec_events <span style="color:#164f46">add column if not exists</span> payment_status text;<br>
-                <span style="color:#164f46">create table if not exists</span> imec_email_log (id bigserial <span style="color:#164f46">primary key</span>, event_id text, recipient_email text, sent_at timestamptz <span style="color:#164f46">default</span> now());<br>
-                <span style="color:#164f46">create table if not exists</span> imec_passwords (email text <span style="color:#164f46">primary key</span>, password text);<br>
-                <span style="color:#164f46">create table if not exists</span> imec_annual_leave (year int, email text, granted numeric, <span style="color:#164f46">primary key</span> (year, email));<br>
-                <span style="color:#164f46">create table if not exists</span> imec_holidays (date text <span style="color:#164f46">primary key</span>, name text);<br>
-                <span style="color:#164f46">create table if not exists</span> imec_profiles (email text <span style="color:#164f46">primary key</span>, phone text, birth text, address text, emergency_name text, emergency_relation text, emergency_phone text);<br>
-                <span style="color:#164f46">create table if not exists</span> imec_audit_log (id bigserial <span style="color:#164f46">primary key</span>, actor_email text, action text, target_id text, before_data jsonb, after_data jsonb, created_at timestamptz <span style="color:#164f46">default</span> now());<br><br>
-                <span style="color:#697676">-- RLS 활성화 (모든 테이블)</span><br>
-                <span style="color:#164f46">alter table</span> imec_employees <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_employees <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);<br>
-                <span style="color:#164f46">alter table</span> imec_leaves <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_leaves <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);<br>
-                <span style="color:#164f46">alter table</span> imec_events <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_events <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);<br>
-                <span style="color:#164f46">alter table</span> imec_email_log <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_email_log <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);<br>
-                <span style="color:#164f46">alter table</span> imec_passwords <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_passwords <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);<br>
-                <span style="color:#164f46">alter table</span> imec_annual_leave <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_annual_leave <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);<br>
-                <span style="color:#164f46">alter table</span> imec_holidays <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_holidays <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);<br>
-                <span style="color:#164f46">alter table</span> imec_profiles <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_profiles <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);<br>
-                <span style="color:#164f46">alter table</span> imec_audit_log <span style="color:#164f46">enable row level security</span>; <span style="color:#164f46">create policy</span> "allow_all" <span style="color:#164f46">on</span> imec_audit_log <span style="color:#164f46">for all using</span> (true) <span style="color:#164f46">with check</span> (true);
-              </div>
-              <div style="margin-top:14px;background:var(--canvas);border-radius:10px;padding:16px;font-size:12px;font-family:monospace;line-height:2;color:var(--muted)">
-                <strong style="color:var(--ink);font-size:12px">GitHub Actions Secrets (6개)</strong><br><br>
-                SUPABASE_URL &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← Supabase Project URL<br>
-                SUPABASE_SERVICE_KEY ← Supabase <strong style="color:var(--red)">service_role</strong> key (비공개)<br>
-                SMTP_HOST &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← smtp.mailplug.co.kr<br>
-                SMTP_PORT &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← 587<br>
-                SMTP_USER &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← 발신 이메일 주소<br>
-                SMTP_PASS &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← 이메일 비밀번호
-              </div>
+            <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:var(--green)">이메일 알림 설정</p>
+            <p style="margin:0 0 16px;font-size:12px;color:var(--muted)">연차/출장 등록·수정·삭제 시 통보 대상에게 이메일을 발송합니다. Vercel 배포 후 아래에 URL을 입력하세요.</p>
+            <div class="field" style="margin-bottom:12px">
+              <label style="font-size:12px">Vercel 이메일 API URL</label>
+              <input id="vercelEmailUrl" placeholder="https://xxxx.vercel.app/api/send-email" style="font-size:13px;padding:8px 10px">
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <button class="primary" type="button" id="saveVercelUrlBtn" onclick="localStorage.setItem('imecVercelEmailUrl',document.getElementById('vercelEmailUrl').value.trim());showToast('이메일 API URL 저장 완료')">저장</button>
+              <button class="secondary" type="button" id="testEmailBtn">테스트 발송</button>
+              <span id="emailTestStatus" style="font-size:12px;color:var(--muted)"></span>
             </div>
           </article>
         </section>
@@ -1090,6 +1028,12 @@
             <div class="field"><label for="leaveStart">시작일</label><input id="leaveStart" type="date" required></div>
             <div class="field"><label for="leaveEnd">종료일</label><input id="leaveEnd" type="date" required></div>
             <div class="field full"><label for="leaveReason">사유</label><textarea id="leaveReason" placeholder="예: 개인 일정, 가족 행사"></textarea></div>
+          </div>
+        </div>
+        <div style="padding:0 24px 10px">
+          <div style="background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;padding:10px 12px">
+            <div style="font-size:12px;font-weight:600;color:#444;margin-bottom:6px">메일로 통보</div>
+            <div id="lmNotifyList" style="display:flex;flex-wrap:wrap;gap:6px 14px"></div>
           </div>
         </div>
         <div class="modal-foot"><button type="button" class="secondary" data-close>취소</button><button class="primary" type="submit">저장하기</button></div>
@@ -1144,6 +1088,12 @@
                 <span class="field-hint" id="eventAttendeeHint">메일 체크가 켜진 직원에게 일정 안내 메일을 보냅니다.</span>
               </div>
             </div>
+          </div>
+        </div>
+        <div style="padding:0 24px 10px">
+          <div style="background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;padding:10px 12px">
+            <div style="font-size:12px;font-weight:600;color:#444;margin-bottom:6px">메일로 통보</div>
+            <div id="emNotifyList" style="display:flex;flex-wrap:wrap;gap:6px 14px"></div>
           </div>
         </div>
         <div class="modal-foot"><button type="button" class="secondary" id="eventCancelBtn" data-close>취소</button><button class="primary" type="submit" id="eventSubmitBtn">일정 등록하기</button></div>
@@ -1404,7 +1354,7 @@
       kr:{
         nav_dashboard:"공유 캘린더",nav_leave:"연차 등록/조회",nav_trips:"출장 등록/조회",
         nav_admin:"관리자",nav_team:"전사 연차 현황",nav_tripsAdmin:"전사 출장 현황",
-        nav_employees:"직원 관리",nav_holidays:"공휴일 관리",side_usage:"나의 연차 사용률",
+        nav_employees:"직원 관리",nav_holidays:"공휴일 관리",nav_emailjs:"설정",side_usage:"나의 연차 사용률",
         topbar_myInfo:"내 정보",topbar_changePw:"비밀번호 변경",topbar_logout:"로그아웃",
         login_subtitle:"회사 이메일 계정으로 로그인하세요.",
         login_idLabel:"아이디",login_idPlaceholder:"아이디",
@@ -1551,7 +1501,7 @@
       en:{
         nav_dashboard:"Shared Calendar",nav_leave:"Leave",nav_trips:"Business Trips",
         nav_admin:"Admin",nav_team:"Company Leave",nav_tripsAdmin:"Company Trips",
-        nav_employees:"Employees",nav_holidays:"Holidays",side_usage:"My Leave Usage",
+        nav_employees:"Employees",nav_holidays:"Holidays",nav_emailjs:"Settings",side_usage:"My Leave Usage",
         topbar_myInfo:"My Info",topbar_changePw:"Change Password",topbar_logout:"Logout",
         login_subtitle:"Sign in with your company email.",
         login_idLabel:"Username",login_idPlaceholder:"Username",
@@ -1699,7 +1649,7 @@
       jp:{
         nav_dashboard:"共有カレンダー",nav_leave:"休暇申請/照会",nav_trips:"出張申請/照会",
         nav_admin:"管理者",nav_team:"全社休暇状況",nav_tripsAdmin:"全社出張状況",
-        nav_employees:"社員管理",nav_holidays:"祝日管理",side_usage:"私の休暇使用率",
+        nav_employees:"社員管理",nav_holidays:"祝日管理",nav_emailjs:"設定",side_usage:"私の休暇使用率",
         topbar_myInfo:"自分の情報",topbar_changePw:"パスワード変更",topbar_logout:"ログアウト",
         login_subtitle:"会社のメールアカウントでサインインしてください。",
         login_idLabel:"ユーザーID",login_idPlaceholder:"ユーザーID",
@@ -1864,7 +1814,7 @@
       set("#loginForm .primary", L.login_btn);
       const helpEl=document.querySelector(".login-help"); if(helpEl) helpEl.firstChild.textContent=L.login_help;
       // Sidebar nav
-      const navPageMap = {dashboard:"nav_dashboard",leave:"nav_leave",trips:"nav_trips",team:"nav_team","trips-admin":"nav_tripsAdmin",employees:"nav_employees",holidays:"nav_holidays"};
+      const navPageMap = {dashboard:"nav_dashboard",leave:"nav_leave",trips:"nav_trips",team:"nav_team","trips-admin":"nav_tripsAdmin",employees:"nav_employees",holidays:"nav_holidays",emailjs:"nav_emailjs"};
       document.querySelectorAll(".nav button[data-page]").forEach(btn=>{
         const key=navPageMap[btn.dataset.page]; if(!key) return;
         const icon=btn.querySelector("span"); if(icon) { btn.textContent=""; btn.appendChild(icon); btn.appendChild(document.createTextNode(" "+L[key])); }
@@ -2944,6 +2894,8 @@
       leaves=leaves.filter(x=>String(x.id)!==String(id));
       save(); renderAll();
       renderAdminEmployeeLeaves(creatorEmail);
+      sendNotifEmail(getNotifyTargets(l.creatorEmail), currentUser?.email?[currentUser.email]:[],
+        leaveSubject("delete", l.creator, l.type, l.start, l.end, l.days), buildLeaveDeleteEmailHtml(l));
       showToast(t("toast_leaveDeleted"));
     };
     window.adminAddLeave = email => {
@@ -3316,6 +3268,8 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       events=events.filter(e=>String(e.id)!==String(id));
       localStorage.setItem("imecEvents",JSON.stringify(events)); _lastSyncAt=Date.now();
       renderAll(); renderAdminTrips(); showAdminTripDetail(email);
+      sendNotifEmail(getNotifyTargets(trip.creatorEmail), currentUser?.email?[currentUser.email]:[],
+        tripSubject("delete", trip.creator, trip.date, trip.endDate), buildTripDeleteEmailHtml(trip));
       showToast(t("toast_tripDeleted"));
     };
     window.startPayEdit = tripId => {
@@ -3362,6 +3316,8 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       events=events.filter(e=>String(e.id)!==String(id));
       localStorage.setItem("imecEvents",JSON.stringify(events)); _lastSyncAt=Date.now();
       renderAll(); renderTripPage();
+      sendNotifEmail(getNotifyTargets(trip.creatorEmail), currentUser?.email?[currentUser.email]:[],
+        tripSubject("delete", trip.creator, trip.date, trip.endDate), buildTripDeleteEmailHtml(trip));
       showToast(t("toast_tripDeleted"));
     };
     function renderTripAttendeeResults(query="") {
@@ -3984,6 +3940,8 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         updateEventFields();
         calculateEventLeaveDays();
       }
+      if(id==="leaveModal") renderNotifyList("lmNotifyList", currentUser?.email);
+      if(id==="eventModal") renderNotifyList("emNotifyList", currentUser?.email);
       document.getElementById(id).classList.add("open");
     }
     window.editLeave = id => {
@@ -3999,7 +3957,10 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         return showLoginError("연차 삭제 실패",`서버에서 연차를 삭제하지 못했습니다.\n${error.message||"다시 시도해 주세요."}`);
       }
       sbAuditLog("delete_leave",id,l,null);
-      leaves=leaves.filter(x=>x.id!==id); save(); renderAll(); showToast(t("toast_leaveEventDeleted"));
+      leaves=leaves.filter(x=>x.id!==id); save(); renderAll();
+      sendNotifEmail(getNotifyTargets(l.creatorEmail), currentUser?.email?[currentUser.email]:[],
+        leaveSubject("delete", l.creator, l.type, l.start, l.end, l.days), buildLeaveDeleteEmailHtml(l));
+      showToast(t("toast_leaveEventDeleted"));
     };
     function setActiveEventType(type) {
       document.getElementById("eventType").value=type;
@@ -4199,6 +4160,13 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         events.push(item);
       }
       sbUp("imec_events", eventsToRows([item])); save(); renderAll(); renderTripPage();
+      // 출장 등록/수정 이메일 통보
+      {
+        const _op = editId ? "edit" : "create";
+        const _to = getCheckedNotifyEmails("tmNotifyList");
+        const _cc = currentUser?.email ? [currentUser.email] : [];
+        sendNotifEmail(_to, _cc, tripSubject(_op, item.creator, item.date, item.endDate), buildTripEmailHtml(item));
+      }
       const _refreshEmail = adminCreatorEmail || (editId ? (events.find(ev=>String(ev.id)===editId)||item).creatorEmail : null);
       if(isAdmin(currentUser) && document.getElementById("page-trips-admin")?.classList.contains("active")) {
         renderAdminTrips();
@@ -4549,6 +4517,9 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const refreshEmail = window._adminEditingCreatorEmail || window._adminAddLeaveEmail;
       if(refreshEmail) renderAdminEmployeeLeaves(refreshEmail);
       window._adminEditingCreatorEmail=null; window._adminAddLeaveEmail=null;
+      // 연차 등록/수정 이메일 통보 (관리자 경로)
+      sendNotifEmail(getCheckedNotifyEmails("lmNotifyList"), currentUser?.email?[currentUser.email]:[],
+        leaveSubject(id?"edit":"create", item.creator, item.type, item.start, item.end, item.days), buildLeaveEmailHtml(item));
       showToast(id?t("toast_leaveEdited"):t("toast_leaveRegistered"));
     });
     document.getElementById("eventForm").addEventListener("submit", e=>{
@@ -4582,6 +4553,9 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         sbUp("imec_leaves", leavesToRows([leaveItem])); save(); renderAll(); e.target.closest(".modal-backdrop").classList.remove("open");
         if(window._adminAddLeaveEmail) { renderAdminEmployeeLeaves(window._adminAddLeaveEmail); window._adminAddLeaveEmail=null; }
         const wasEditing=Boolean(editingEventKey);
+        // 공유 캘린더 연차 등록/수정 이메일 통보
+        sendNotifEmail(getCheckedNotifyEmails("emNotifyList"), currentUser?.email?[currentUser.email]:[],
+          leaveSubject(wasEditing?"edit":"create", leaveItem.creator, leaveItem.type, leaveItem.start, leaveItem.end, leaveItem.days), buildLeaveEmailHtml(leaveItem));
         editingEventKey=null; leaveOnlyMode=false;
         return showToast(wasEditing?t("toast_leaveEdited"):t("toast_leaveRegistered"));
       }
@@ -4597,14 +4571,20 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const item={id:originalEvent?.id||Date.now(),type,date:start,endDate:end,time:type==="other"?document.getElementById("eventOtherTime").value:"",
         creator:originalEvent?.creator||currentUser.name,creatorEmail:originalEvent?.creatorEmail||currentUser.email,
         title:type==="trip"?`${title} 출장`:title,location,companions:people.join(", "),attendees:emailRecipients.join(","),attendeesJson:emailAttendeesWithNames};
+      const _calWasEditing=Boolean(editingEventKey);
       if(editingKind==="event") events=events.map(event=>String(event.id)===editingId?item:event);
       else {
         if(editingKind==="leave") leaves=leaves.filter(leave=>String(leave.id)!==editingId);
         events.push(item);
       }
-      const wasEditing=Boolean(editingEventKey);
       editingEventKey=null; leaveOnlyMode=false;
       sbUp("imec_events", eventsToRows([item])); save(); renderAll(); e.target.closest(".modal-backdrop").classList.remove("open");
+      // 공유 캘린더 출장 등록/수정 이메일 통보
+      if(type==="trip") {
+        sendNotifEmail(getCheckedNotifyEmails("emNotifyList"), currentUser?.email?[currentUser.email]:[],
+          tripSubject(_calWasEditing?"edit":"create", item.creator, item.date, item.endDate), buildTripEmailHtml(item));
+      }
+      const wasEditing=_calWasEditing;
       const sbConnected=!!getSupabase();
       if(emailRecipients.length) {
         showToast(wasEditing ? t("toast_eventEdited") : t("toast_eventRegistered"));
@@ -4777,6 +4757,14 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       sbUp("imec_leaves", leavesToRows([_pendingLeaveItem])); save(); renderAll();
       document.getElementById("leaveConfirmModal").classList.remove("open");
       document.getElementById("leaveFormModal").classList.remove("open");
+      // 연차 등록/수정 이메일 통보
+      {
+        const _op = _pendingLeaveEditId ? "edit" : "create";
+        const _l = _pendingLeaveItem;
+        const _to = getCheckedNotifyEmails("leaveNotifyList");
+        const _cc = currentUser?.email ? [currentUser.email] : [];
+        sendNotifEmail(_to, _cc, leaveSubject(_op, _l.creator, _l.type, _l.start, _l.end, _l.days), buildLeaveEmailHtml(_l));
+      }
       _pendingLeaveItem = null; _pendingLeaveEditId = null;
       showToast(t("toast_leaveApplied"));
     });
@@ -4788,6 +4776,143 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
 
 
     document.getElementById("todayText").textContent = new Intl.DateTimeFormat("ko-KR",{year:"numeric",month:"long",day:"numeric",weekday:"long"}).format(TODAY);
+
+    // ── 이메일 통보 헬퍼 ────────────────────────────────────────
+    function fmtD(d) { return d ? d.replace(/-/g, "/") : ""; }
+    function tripDays(s, e) { if(!s||!e) return 1; return Math.round((new Date(e)-new Date(s))/86400000)+1; }
+
+    // notify_target 체크된 직원 이메일 목록
+    function getNotifyTargets(excludeEmail) {
+      return employeeDirectory.filter(p => p.notifyTarget && p.status !== "퇴사" && p.email !== excludeEmail).map(p => p.email);
+    }
+    function getCheckedNotifyEmails(containerId) {
+      return [...document.querySelectorAll(`#${containerId} .notify-checkbox:checked`)]
+        .map(cb => cb.dataset.email).filter(Boolean);
+    }
+
+    async function sendNotifEmail(to, cc, subject, html) {
+      const url = localStorage.getItem("imecVercelEmailUrl");
+      if (!url || !to || !to.length) return;
+      try {
+        await fetch(url, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ to, cc: cc || [], subject, html })
+        });
+      } catch (e) { console.warn("이메일 발송 실패:", e); }
+    }
+
+    // 연차 제목 생성
+    function leaveSubject(op, name, type, start, end, days) {
+      const period = start === end ? fmtD(start) : `${fmtD(start)}-${fmtD(end)}`;
+      const prefix = op === "create" ? `[연차등록] ${name} - ${type} 신청합니다`
+                   : op === "edit"   ? `[연차수정] ${name} - ${type} 수정합니다`
+                                     : `[연차삭제] ${name} 연차 취소합니다`;
+      return `${prefix} (${period}, ${days}일)`;
+    }
+    // 출장 제목 생성
+    function tripSubject(op, name, start, end) {
+      const days = tripDays(start, end);
+      const period = start === end ? fmtD(start) : `${fmtD(start)}-${fmtD(end)}`;
+      const prefix = op === "create" ? `[출장등록] ${name} - 출장 신청합니다`
+                   : op === "edit"   ? `[출장수정] ${name} - 출장 수정합니다`
+                                     : `[출장삭제] ${name} - 출장 삭제합니다`;
+      return `${prefix} (${period}, ${days}일)`;
+    }
+
+    // 휴가신청서 HTML (등록/수정 공통)
+    function buildLeaveEmailHtml(l) {
+      const emp = employeeDirectory.find(p => p.email === l.creatorEmail);
+      const now = new Date();
+      const dateLine = `${now.getFullYear()} 년   ${String(now.getMonth()+1).padStart(2,"0")} 월   ${String(now.getDate()).padStart(2,"0")} 일`;
+      const rows = [
+        ["소&nbsp;&nbsp;&nbsp;속", emp?.dept || ""],
+        ["직&nbsp;&nbsp;&nbsp;위", emp?.position || ""],
+        ["성&nbsp;&nbsp;&nbsp;명", l.creator || ""],
+        ["휴가 종류", l.type || ""],
+        ["휴가 사유", l.reason || ""],
+        ["휴가 기간", `${fmtD(l.start)} ~ ${fmtD(l.end)} (${l.days}일 차감)`],
+        ...(l.emergencyContact ? [["비상연락처", l.emergencyContact]] : []),
+        ...(l.notes ? [["기타 사항", l.notes]] : []),
+      ];
+      return `<div style="font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;color:#111;max-width:560px;border:2px solid #555;padding:20px 24px">
+        <h2 style="text-align:center;letter-spacing:8px;font-size:18px;margin:0 0 18px;border-bottom:2px solid #555;padding-bottom:12px">휴 가 신 청 서</h2>
+        <table style="border-collapse:collapse;width:100%;font-size:13px">
+          ${rows.map(([label,val])=>`<tr>
+            <td style="border:1px solid #555;padding:8px 14px;background:#e8e8e8;font-weight:600;width:90px;text-align:center;letter-spacing:2px;white-space:nowrap">${label}</td>
+            <td style="border:1px solid #555;padding:8px 14px">${val}</td>
+          </tr>`).join("")}
+        </table>
+        <p style="text-align:center;font-size:13px;font-weight:600;letter-spacing:1px;margin:16px 0 6px">위와 같이 휴가를 신청하오니 승인하여 주시기 바랍니다.</p>
+        <p style="text-align:center;font-size:13px;margin:0 0 16px">${dateLine}</p>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid #ccc;padding-top:6px;font-size:10px;color:#888">
+          <span>IMEC-FORM-09</span>
+          <span style="font-size:11px;color:#555;font-weight:600">Idea Mecca Industries Co., Ltd. &nbsp;(주)아이맥 인더스트리</span>
+          <span>Rev. 0</span>
+        </div>
+      </div>`;
+    }
+
+    // 연차 삭제 이메일 (텍스트 요약)
+    function buildLeaveDeleteEmailHtml(l) {
+      return `<div style="font-family:sans-serif;font-size:14px;line-height:1.8;color:#222;max-width:480px">
+        <p style="margin:0 0 10px;color:#c0392b;font-weight:600">아래 연차 일정이 삭제되었습니다.</p>
+        <table style="border-collapse:collapse;font-size:13px;width:100%">
+          <tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600;width:90px">일정 종류</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${l.type}</td></tr>
+          <tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600">기간</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${fmtD(l.start)} ~ ${fmtD(l.end)}</td></tr>
+          <tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600">차감 일수</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${l.days}일</td></tr>
+          ${l.reason?`<tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600">사유</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${l.reason}</td></tr>`:""}
+        </table>
+        <p style="margin:12px 0 0;font-size:11px;color:#999">IMEC HR 시스템에서 자동 발송된 메일입니다.</p>
+      </div>`;
+    }
+
+    // 출장신청서 HTML (등록/수정 공통)
+    function buildTripEmailHtml(item) {
+      const days = tripDays(item.date, item.endDate);
+      const rows = [
+        ["행선지", item.location || ""],
+        ["국내/해외", (item.tripArea||"국내") + (item.isOutwork?" (외근)":"")],
+        ["기간", `${fmtD(item.date)} ~ ${fmtD(item.endDate)} (${days}일)`],
+        ...(item.companions ? [["동행자", item.companions]] : []),
+        ...(item.poNumber ? [["PO#", item.poNumber]] : []),
+        ...(item.orderNumber ? [["오더번호", item.orderNumber]] : []),
+        ...(item.tripDesc ? [["출장내용", item.tripDesc]] : []),
+      ];
+      return `<div style="font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;color:#111;max-width:560px;border:2px solid #555;padding:20px 24px">
+        <h2 style="text-align:center;letter-spacing:4px;font-size:18px;margin:0 0 18px;border-bottom:2px solid #555;padding-bottom:12px">출 장 신 청 서</h2>
+        <p style="margin:0 0 12px;font-size:13px;color:#555">신청자: <strong>${item.creator}</strong></p>
+        <table style="border-collapse:collapse;width:100%;font-size:13px">
+          ${rows.map(([label,val])=>`<tr>
+            <td style="border:1px solid #555;padding:8px 14px;background:#e8e8e8;font-weight:600;width:90px;text-align:center;white-space:nowrap">${label}</td>
+            <td style="border:1px solid #555;padding:8px 14px">${val}</td>
+          </tr>`).join("")}
+        </table>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid #ccc;padding-top:6px;font-size:10px;color:#888;margin-top:16px">
+          <span>IMEC-FORM</span>
+          <span style="font-size:11px;color:#555;font-weight:600">Idea Mecca Industries Co., Ltd. &nbsp;(주)아이맥 인더스트리</span>
+          <span>Rev. 0</span>
+        </div>
+      </div>`;
+    }
+
+    // 출장 삭제 이메일 (텍스트 요약)
+    function buildTripDeleteEmailHtml(item) {
+      const days = tripDays(item.date, item.endDate);
+      return `<div style="font-family:sans-serif;font-size:14px;line-height:1.8;color:#222;max-width:480px">
+        <p style="margin:0 0 10px;color:#c0392b;font-weight:600">아래 출장 일정이 삭제되었습니다.</p>
+        <table style="border-collapse:collapse;font-size:13px;width:100%">
+          <tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600;width:90px">국내/해외</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${item.tripArea||"국내"}${item.isOutwork?" (외근)":""}</td></tr>
+          <tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600">행선지</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${item.location||""}</td></tr>
+          <tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600">기간</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${fmtD(item.date)} ~ ${fmtD(item.endDate)} (${days}일)</td></tr>
+          ${item.companions?`<tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600">동행자</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${item.companions}</td></tr>`:""}
+          ${item.poNumber?`<tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600">PO#</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${item.poNumber}</td></tr>`:""}
+          ${item.orderNumber?`<tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600">오더번호</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${item.orderNumber}</td></tr>`:""}
+          ${item.tripDesc?`<tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600">출장내용</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${item.tripDesc}</td></tr>`:""}
+        </table>
+        <p style="margin:12px 0 0;font-size:11px;color:#999">IMEC HR 시스템에서 자동 발송된 메일입니다.</p>
+      </div>`;
+    }
+    // ────────────────────────────────────────────────────────────
 
     async function initApp() {
       const overlay=document.getElementById("loadingOverlay");
@@ -4844,6 +4969,26 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
     }
     document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) syncIfNeeded(); });
     setInterval(syncIfNeeded, 60000);
+
+    // 설정 페이지 - Vercel 이메일 URL 로드 및 테스트 버튼
+    document.addEventListener("DOMContentLoaded", () => {
+      const vercelInput = document.getElementById("vercelEmailUrl");
+      if(vercelInput) vercelInput.value = localStorage.getItem("imecVercelEmailUrl") || "";
+      document.getElementById("testEmailBtn")?.addEventListener("click", async () => {
+        const url = localStorage.getItem("imecVercelEmailUrl");
+        const statusEl = document.getElementById("emailTestStatus");
+        if(!url) { if(statusEl) statusEl.textContent = "URL을 먼저 저장하세요"; return; }
+        if(!currentUser?.email) { if(statusEl) statusEl.textContent = "로그인 후 테스트 가능합니다"; return; }
+        if(statusEl) statusEl.textContent = "발송 중...";
+        try {
+          const r = await fetch(url, {
+            method:"POST", headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({to:[currentUser.email],cc:[],subject:"[IMEC HR] 이메일 테스트",html:"<p>이메일 발송 테스트가 성공적으로 완료되었습니다.</p>"})
+          });
+          if(statusEl) statusEl.textContent = r.ok ? "✓ 테스트 발송 성공" : "✗ 발송 실패: "+r.status;
+        } catch(e) { if(statusEl) statusEl.textContent = "✗ 오류: "+e.message; }
+      });
+    });
   </script>
 </body>
 </html>
