@@ -4742,7 +4742,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       {
         const _op = _pendingLeaveEditId ? "edit" : "create";
         const _l = _pendingLeaveItem;
-        const _to = getCheckedNotifyEmails("leaveNotifyList");
+        const _to = getCheckedNotifyEmails("lfNotifyList");
         const _cc = currentUser?.email ? [currentUser.email] : [];
         sendNotifEmail(_to, _cc, leaveSubject(_op, _l.creator, _l.type, _l.start, _l.end, _l.days), buildLeaveEmailHtml(_l));
       }
