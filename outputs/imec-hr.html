@@ -2875,7 +2875,7 @@
       leaves=leaves.filter(x=>String(x.id)!==String(id));
       save(); renderAll();
       renderAdminEmployeeLeaves(creatorEmail);
-      sendNotifEmail(getNotifyTargets(l.creatorEmail), currentUser?.email?[currentUser.email]:[],
+      sendNotifEmail(getNotifyTargets(null), currentUser?.email?[currentUser.email]:[],
         leaveSubject("delete", l.creator, l.type, l.start, l.end, l.days), buildLeaveDeleteEmailHtml(l));
       showToast(t("toast_leaveDeleted"));
     };
@@ -3249,7 +3249,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       events=events.filter(e=>String(e.id)!==String(id));
       localStorage.setItem("imecEvents",JSON.stringify(events)); _lastSyncAt=Date.now();
       renderAll(); renderAdminTrips(); showAdminTripDetail(email);
-      sendNotifEmail(getNotifyTargets(trip.creatorEmail), currentUser?.email?[currentUser.email]:[],
+      sendNotifEmail(getNotifyTargets(null), currentUser?.email?[currentUser.email]:[],
         tripSubject("delete", trip.creator, trip.date, trip.endDate), buildTripDeleteEmailHtml(trip));
       showToast(t("toast_tripDeleted"));
     };
@@ -3297,7 +3297,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       events=events.filter(e=>String(e.id)!==String(id));
       localStorage.setItem("imecEvents",JSON.stringify(events)); _lastSyncAt=Date.now();
       renderAll(); renderTripPage();
-      sendNotifEmail(getNotifyTargets(trip.creatorEmail), currentUser?.email?[currentUser.email]:[],
+      sendNotifEmail(getNotifyTargets(null), currentUser?.email?[currentUser.email]:[],
         tripSubject("delete", trip.creator, trip.date, trip.endDate), buildTripDeleteEmailHtml(trip));
       showToast(t("toast_tripDeleted"));
     };
@@ -3921,8 +3921,8 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         updateEventFields();
         calculateEventLeaveDays();
       }
-      if(id==="leaveModal") renderNotifyList("lmNotifyList", currentUser?.email);
-      if(id==="eventModal") renderNotifyList("emNotifyList", currentUser?.email);
+      if(id==="leaveModal") renderNotifyList("lmNotifyList", null);
+      if(id==="eventModal") renderNotifyList("emNotifyList", null);
       document.getElementById(id).classList.add("open");
     }
     window.editLeave = id => {
@@ -3939,7 +3939,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       }
       sbAuditLog("delete_leave",id,l,null);
       leaves=leaves.filter(x=>x.id!==id); save(); renderAll();
-      sendNotifEmail(getNotifyTargets(l.creatorEmail), currentUser?.email?[currentUser.email]:[],
+      sendNotifEmail(getNotifyTargets(null), currentUser?.email?[currentUser.email]:[],
         leaveSubject("delete", l.creator, l.type, l.start, l.end, l.days), buildLeaveDeleteEmailHtml(l));
       showToast(t("toast_leaveEventDeleted"));
     };
