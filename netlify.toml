@@ -1,8 +1,0 @@
-[build]
-  command = "node build.js"
-  publish = "dist"
-
-[[headers]]
-  for = "/*"
-  [headers.values]
-    Content-Security-Policy = "connect-src 'self' https://*.supabase.co https://imec-vercel-email.vercel.app"
