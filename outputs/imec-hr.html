@@ -2875,8 +2875,8 @@
       leaves=leaves.filter(x=>String(x.id)!==String(id));
       save(); renderAll();
       renderAdminEmployeeLeaves(creatorEmail);
-      sendNotifEmail(getNotifyTargets(null), currentUser?.email?[currentUser.email]:[],
-        leaveSubject("delete", l.creator, l.type, l.start, l.end, l.days), buildLeaveDeleteEmailHtml(l));
+      { const _to=getNotifyTargets(null); sendNotifEmail(_to, buildCcList(l),
+          leaveSubject("delete", l.creator, l.type, l.start, l.end, l.days), buildLeaveDeleteEmailHtml(l)); }
       showToast(t("toast_leaveDeleted"));
     };
     window.adminAddLeave = email => {
@@ -3249,8 +3249,8 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       events=events.filter(e=>String(e.id)!==String(id));
       localStorage.setItem("imecEvents",JSON.stringify(events)); _lastSyncAt=Date.now();
       // 이메일 발송을 renderAll 전에 실행 (렌더링 에러가 발송을 막지 않도록)
-      sendNotifEmail(getNotifyTargets(null), currentUser?.email?[currentUser.email]:[],
-        tripSubject("delete", trip.creator, trip.date, trip.endDate), buildTripDeleteEmailHtml(trip));
+      { const _to=getNotifyTargets(null); sendNotifEmail(_to, buildCcList(trip),
+          tripSubject("delete", trip.creator, trip.date, trip.endDate), buildTripDeleteEmailHtml(trip)); }
       renderAll(); renderAdminTrips(); showAdminTripDetail(email);
       showToast(t("toast_tripDeleted"));
     };
@@ -3298,8 +3298,8 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       events=events.filter(e=>String(e.id)!==String(id));
       localStorage.setItem("imecEvents",JSON.stringify(events)); _lastSyncAt=Date.now();
       // 이메일 발송을 renderAll 전에 실행
-      sendNotifEmail(getNotifyTargets(null), currentUser?.email?[currentUser.email]:[],
-        tripSubject("delete", trip.creator, trip.date, trip.endDate), buildTripDeleteEmailHtml(trip));
+      { const _to=getNotifyTargets(null); sendNotifEmail(_to, buildCcList(trip),
+          tripSubject("delete", trip.creator, trip.date, trip.endDate), buildTripDeleteEmailHtml(trip)); }
       renderAll(); renderTripPage();
       showToast(t("toast_tripDeleted"));
     };
@@ -3942,8 +3942,8 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       sbAuditLog("delete_leave",id,l,null);
       leaves=leaves.filter(x=>String(x.id)!==String(id));
       // 이메일 발송을 renderAll 전에 실행 (렌더링 에러가 발송을 막지 않도록)
-      sendNotifEmail(getNotifyTargets(null), currentUser?.email?[currentUser.email]:[],
-        leaveSubject("delete", l.creator, l.type, l.start, l.end, l.days), buildLeaveDeleteEmailHtml(l));
+      { const _to=getNotifyTargets(null); sendNotifEmail(_to, buildCcList(l),
+          leaveSubject("delete", l.creator, l.type, l.start, l.end, l.days), buildLeaveDeleteEmailHtml(l)); }
       save(); renderAll();
       showToast(t("toast_leaveEventDeleted"));
     };
@@ -4011,6 +4011,8 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         }
         sbAuditLog("delete_leave",id,item,null);
         leaves=leaves.filter(leave=>String(leave.id)!==id);
+        { const _to=getNotifyTargets(null); sendNotifEmail(_to, buildCcList(item),
+            leaveSubject("delete", item.creator, item.type, item.start, item.end, item.days), buildLeaveDeleteEmailHtml(item)); }
       } else if(target.type==="trip") {
         const item=events.find(event=>String(event.id)===id);
         if(!item || !confirm(`${item.title} 일정을 삭제할까요?`)) return;
@@ -4022,6 +4024,8 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         }
         sbAuditLog("delete_trip",id,item,null);
         events=events.filter(event=>String(event.id)!==id);
+        { const _to=getNotifyTargets(null); sendNotifEmail(_to, buildCcList(item),
+            tripSubject("delete", item.creator, item.date, item.endDate), buildTripDeleteEmailHtml(item)); }
       } else {
         return showLoginError(t("err_noDeleteOther_title"),t("err_noDeleteOther_msg"));
       }
@@ -4149,8 +4153,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       {
         const _op = editId ? "edit" : "create";
         const _to = getCheckedNotifyEmails("tmNotifyList");
-        const _cc = currentUser?.email ? [currentUser.email] : [];
-        sendNotifEmail(_to, _cc, tripSubject(_op, item.creator, item.date, item.endDate), buildTripEmailHtml(item));
+        sendNotifEmail(_to, buildCcList(item), tripSubject(_op, item.creator, item.date, item.endDate), buildTripEmailHtml(item));
       }
       const _refreshEmail = adminCreatorEmail || (editId ? (events.find(ev=>String(ev.id)===editId)||item).creatorEmail : null);
       if(isAdmin(currentUser) && document.getElementById("page-trips-admin")?.classList.contains("active")) {
@@ -4503,7 +4506,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       if(refreshEmail) renderAdminEmployeeLeaves(refreshEmail);
       window._adminEditingCreatorEmail=null; window._adminAddLeaveEmail=null;
       // 연차 등록/수정 이메일 통보 (관리자 경로)
-      sendNotifEmail(getCheckedNotifyEmails("lmNotifyList"), currentUser?.email?[currentUser.email]:[],
+      sendNotifEmail(getCheckedNotifyEmails("lmNotifyList"), buildCcList(item),
         leaveSubject(id?"edit":"create", item.creator, item.type, item.start, item.end, item.days), buildLeaveEmailHtml(item));
       showToast(id?t("toast_leaveEdited"):t("toast_leaveRegistered"));
     });
@@ -4539,7 +4542,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         if(window._adminAddLeaveEmail) { renderAdminEmployeeLeaves(window._adminAddLeaveEmail); window._adminAddLeaveEmail=null; }
         const wasEditing=Boolean(editingEventKey);
         // 공유 캘린더 연차 등록/수정 이메일 통보
-        sendNotifEmail(getCheckedNotifyEmails("emNotifyList"), currentUser?.email?[currentUser.email]:[],
+        sendNotifEmail(getCheckedNotifyEmails("emNotifyList"), buildCcList(leaveItem),
           leaveSubject(wasEditing?"edit":"create", leaveItem.creator, leaveItem.type, leaveItem.start, leaveItem.end, leaveItem.days), buildLeaveEmailHtml(leaveItem));
         editingEventKey=null; leaveOnlyMode=false;
         return showToast(wasEditing?t("toast_leaveEdited"):t("toast_leaveRegistered"));
@@ -4566,7 +4569,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       sbUp("imec_events", eventsToRows([item])); save(); renderAll(); e.target.closest(".modal-backdrop").classList.remove("open");
       // 공유 캘린더 출장 등록/수정 이메일 통보
       if(type==="trip") {
-        sendNotifEmail(getCheckedNotifyEmails("emNotifyList"), currentUser?.email?[currentUser.email]:[],
+        sendNotifEmail(getCheckedNotifyEmails("emNotifyList"), buildCcList(item),
           tripSubject(_calWasEditing?"edit":"create", item.creator, item.date, item.endDate), buildTripEmailHtml(item));
       }
       const wasEditing=_calWasEditing;
@@ -4747,8 +4750,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         const _op = _pendingLeaveEditId ? "edit" : "create";
         const _l = _pendingLeaveItem;
         const _to = getCheckedNotifyEmails("lfNotifyList");
-        const _cc = currentUser?.email ? [currentUser.email] : [];
-        sendNotifEmail(_to, _cc, leaveSubject(_op, _l.creator, _l.type, _l.start, _l.end, _l.days), buildLeaveEmailHtml(_l));
+        sendNotifEmail(_to, buildCcList(_l), leaveSubject(_op, _l.creator, _l.type, _l.start, _l.end, _l.days), buildLeaveEmailHtml(_l));
       }
       _pendingLeaveItem = null; _pendingLeaveEditId = null;
       showToast(t("toast_leaveApplied"));
@@ -4775,6 +4777,13 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         .map(cb => cb.dataset.email).filter(Boolean);
     }
 
+    // CC: 로그인 본인 + 등록자, 중복 제거
+    function buildCcList(item) {
+      const s=new Set();
+      if(currentUser?.email) s.add(currentUser.email);
+      if(item?.creatorEmail) s.add(item.creatorEmail);
+      return [...s];
+    }
     async function sendNotifEmail(to, cc, subject, html) {
       const url = "https://imec-vercel-email.vercel.app/api/send-email";
       if (!to || !to.length) return;
@@ -4789,10 +4798,10 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
     // 연차 제목 생성
     function leaveSubject(op, name, type, start, end, days) {
       const period = start === end ? fmtD(start) : `${fmtD(start)}-${fmtD(end)}`;
-      const prefix = op === "create" ? `[연차등록] ${name} - ${type} 신청합니다`
-                   : op === "edit"   ? `[연차수정] ${name} - ${type} 수정합니다`
-                                     : `[연차삭제] ${name} - 연차 취소합니다`;
-      return `${prefix} (${period}, ${days}일)`;
+      const prefix = op === "create" ? `[휴가등록] ${name} - 휴가 등록합니다`
+                   : op === "edit"   ? `[휴가수정] ${name} - 휴가 수정합니다`
+                                     : `[휴가삭제] ${name} - 휴가 삭제합니다`;
+      return `${prefix} (${type}, ${period}, ${days}일)`;
     }
     // 출장 제목 생성
     function tripSubject(op, name, start, end) {
