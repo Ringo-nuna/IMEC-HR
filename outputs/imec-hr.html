@@ -4773,13 +4773,15 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
 
     async function sendNotifEmail(to, cc, subject, html) {
       const url = "https://imec-vercel-email.vercel.app/api/send-email";
-      if (!to || !to.length) return;
+      console.log("[Email] to:", to, "cc:", cc, "subject:", subject);
+      if (!to || !to.length) { console.warn("[Email] to가 비어있어 발송 안함"); return; }
       try {
-        await fetch(url, {
+        const r = await fetch(url, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ to, cc: cc || [], subject, html })
         });
-      } catch (e) { console.warn("이메일 발송 실패:", e); }
+        console.log("[Email] 발송 결과:", r.status);
+      } catch (e) { console.error("[Email] 발송 실패:", e); }
     }
 
     // 연차 제목 생성
@@ -4787,7 +4789,7 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       const period = start === end ? fmtD(start) : `${fmtD(start)}-${fmtD(end)}`;
       const prefix = op === "create" ? `[연차등록] ${name} - ${type} 신청합니다`
                    : op === "edit"   ? `[연차수정] ${name} - ${type} 수정합니다`
-                                     : `[연차삭제] ${name} 연차 취소합니다`;
+                                     : `[연차삭제] ${name} - 연차 취소합니다`;
       return `${prefix} (${period}, ${days}일)`;
     }
     // 출장 제목 생성
@@ -4849,28 +4851,35 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
 
     // 출장신청서 HTML (등록/수정 공통)
     function buildTripEmailHtml(item) {
+      const emp = employeeDirectory.find(p => p.email === item.creatorEmail);
       const days = tripDays(item.date, item.endDate);
+      const now = new Date();
+      const dateLine = `${now.getFullYear()} 년   ${String(now.getMonth()+1).padStart(2,"0")} 월   ${String(now.getDate()).padStart(2,"0")} 일`;
       const rows = [
-        ["행선지", item.location || ""],
+        ["소&nbsp;&nbsp;&nbsp;속", emp?.dept || ""],
+        ["직&nbsp;&nbsp;&nbsp;위", emp?.position || ""],
+        ["성&nbsp;&nbsp;&nbsp;명", item.creator || ""],
+        ["행&nbsp;&nbsp;&nbsp;선&nbsp;&nbsp;&nbsp;지", item.location || ""],
         ["국내/해외", (item.tripArea||"국내") + (item.isOutwork?" (외근)":"")],
-        ["기간", `${fmtD(item.date)} ~ ${fmtD(item.endDate)} (${days}일)`],
-        ...(item.companions ? [["동행자", item.companions]] : []),
-        ...(item.poNumber ? [["PO#", item.poNumber]] : []),
+        ["기&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;간", `${fmtD(item.date)} ~ ${fmtD(item.endDate)} (${days}일)`],
+        ...(item.companions ? [["동&nbsp;&nbsp;&nbsp;행&nbsp;&nbsp;&nbsp;자", item.companions]] : []),
         ...(item.orderNumber ? [["오더번호", item.orderNumber]] : []),
+        ...(item.poNumber ? [["오더내용", item.poNumber]] : []),
         ...(item.tripDesc ? [["출장내용", item.tripDesc]] : []),
       ];
-      return `<div style="font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;color:#111;max-width:560px;border:2px solid #555;padding:20px 24px">
-        <h2 style="text-align:center;letter-spacing:4px;font-size:18px;margin:0 0 18px;border-bottom:2px solid #555;padding-bottom:12px">출 장 신 청 서</h2>
-        <p style="margin:0 0 12px;font-size:13px;color:#555">신청자: <strong>${item.creator}</strong></p>
+      return `<div style="font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;color:#111;max-width:560px;border:2px solid #3a7d55;padding:20px 24px">
+        <h2 style="text-align:center;letter-spacing:8px;font-size:18px;margin:0 0 18px;border-bottom:2px solid #3a7d55;padding-bottom:12px">출 장 신 청 서</h2>
         <table style="border-collapse:collapse;width:100%;font-size:13px">
           ${rows.map(([label,val])=>`<tr>
-            <td style="border:1px solid #555;padding:8px 14px;background:#e8e8e8;font-weight:600;width:90px;text-align:center;white-space:nowrap">${label}</td>
-            <td style="border:1px solid #555;padding:8px 14px">${val}</td>
+            <td style="border:1px solid #3a7d55;padding:8px 14px;background:#e8f5ee;font-weight:600;width:90px;text-align:center;letter-spacing:2px;white-space:nowrap">${label}</td>
+            <td style="border:1px solid #3a7d55;padding:8px 14px">${val}</td>
           </tr>`).join("")}
         </table>
-        <div style="display:flex;justify-content:space-between;border-top:1px solid #ccc;padding-top:6px;font-size:10px;color:#888;margin-top:16px">
+        <p style="text-align:center;font-size:13px;font-weight:600;letter-spacing:1px;margin:16px 0 6px">위와 같이 출장을 신청하오니 승인하여 주시기 바랍니다.</p>
+        <p style="text-align:center;font-size:13px;margin:0 0 16px">${dateLine}</p>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid #b2d8c0;padding-top:6px;font-size:10px;color:#888">
           <span>IMEC-FORM</span>
-          <span style="font-size:11px;color:#555;font-weight:600">Idea Mecca Industries Co., Ltd. &nbsp;(주)아이맥 인더스트리</span>
+          <span style="font-size:11px;color:#3a7d55;font-weight:600">Idea Mecca Industries Co., Ltd. &nbsp;(주)아이맥 인더스트리</span>
           <span>Rev. 0</span>
         </div>
       </div>`;
@@ -4886,8 +4895,8 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
           <tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600">행선지</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${item.location||""}</td></tr>
           <tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600">기간</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${fmtD(item.date)} ~ ${fmtD(item.endDate)} (${days}일)</td></tr>
           ${item.companions?`<tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600">동행자</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${item.companions}</td></tr>`:""}
-          ${item.poNumber?`<tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600">PO#</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${item.poNumber}</td></tr>`:""}
           ${item.orderNumber?`<tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600">오더번호</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${item.orderNumber}</td></tr>`:""}
+          ${item.poNumber?`<tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600">오더내용</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${item.poNumber}</td></tr>`:""}
           ${item.tripDesc?`<tr><td style="padding:6px 12px;background:#fef3f2;font-weight:600">출장내용</td><td style="padding:6px 12px;border-bottom:1px solid #eee">${item.tripDesc}</td></tr>`:""}
         </table>
         <p style="margin:12px 0 0;font-size:11px;color:#999">IMEC HR 시스템에서 자동 발송된 메일입니다.</p>
