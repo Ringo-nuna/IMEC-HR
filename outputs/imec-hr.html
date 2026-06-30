@@ -3248,9 +3248,10 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       sbAuditLog("delete_trip",id,trip,null);
       events=events.filter(e=>String(e.id)!==String(id));
       localStorage.setItem("imecEvents",JSON.stringify(events)); _lastSyncAt=Date.now();
-      renderAll(); renderAdminTrips(); showAdminTripDetail(email);
+      // 이메일 발송을 renderAll 전에 실행 (렌더링 에러가 발송을 막지 않도록)
       sendNotifEmail(getNotifyTargets(null), currentUser?.email?[currentUser.email]:[],
         tripSubject("delete", trip.creator, trip.date, trip.endDate), buildTripDeleteEmailHtml(trip));
+      renderAll(); renderAdminTrips(); showAdminTripDetail(email);
       showToast(t("toast_tripDeleted"));
     };
     window.startPayEdit = tripId => {
@@ -3296,9 +3297,10 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
       sbAuditLog("delete_trip",id,trip,null);
       events=events.filter(e=>String(e.id)!==String(id));
       localStorage.setItem("imecEvents",JSON.stringify(events)); _lastSyncAt=Date.now();
-      renderAll(); renderTripPage();
+      // 이메일 발송을 renderAll 전에 실행
       sendNotifEmail(getNotifyTargets(null), currentUser?.email?[currentUser.email]:[],
         tripSubject("delete", trip.creator, trip.date, trip.endDate), buildTripDeleteEmailHtml(trip));
+      renderAll(); renderTripPage();
       showToast(t("toast_tripDeleted"));
     };
     function renderTripAttendeeResults(query="") {
@@ -3938,9 +3940,11 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         return showLoginError("연차 삭제 실패",`서버에서 연차를 삭제하지 못했습니다.\n${error.message||"다시 시도해 주세요."}`);
       }
       sbAuditLog("delete_leave",id,l,null);
-      leaves=leaves.filter(x=>x.id!==id); save(); renderAll();
+      leaves=leaves.filter(x=>String(x.id)!==String(id));
+      // 이메일 발송을 renderAll 전에 실행 (렌더링 에러가 발송을 막지 않도록)
       sendNotifEmail(getNotifyTargets(null), currentUser?.email?[currentUser.email]:[],
         leaveSubject("delete", l.creator, l.type, l.start, l.end, l.days), buildLeaveDeleteEmailHtml(l));
+      save(); renderAll();
       showToast(t("toast_leaveEventDeleted"));
     };
     function setActiveEventType(type) {
@@ -4773,14 +4777,12 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
 
     async function sendNotifEmail(to, cc, subject, html) {
       const url = "https://imec-vercel-email.vercel.app/api/send-email";
-      console.log("[Email] to:", to, "cc:", cc, "subject:", subject);
-      if (!to || !to.length) { console.warn("[Email] to가 비어있어 발송 안함"); return; }
+      if (!to || !to.length) return;
       try {
-        const r = await fetch(url, {
+        await fetch(url, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ to, cc: cc || [], subject, html })
         });
-        console.log("[Email] 발송 결과:", r.status);
       } catch (e) { console.error("[Email] 발송 실패:", e); }
     }
 
@@ -4817,19 +4819,21 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         ...(l.emergencyContact ? [["비상연락처", l.emergencyContact]] : []),
         ...(l.notes ? [["기타 사항", l.notes]] : []),
       ];
-      return `<div style="font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;color:#111;max-width:560px;border:2px solid #555;padding:20px 24px">
-        <h2 style="text-align:center;letter-spacing:8px;font-size:18px;margin:0 0 18px;border-bottom:2px solid #555;padding-bottom:12px">휴 가 신 청 서</h2>
+      return `<div style="font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;color:#111;max-width:560px;border:2px solid #2B8A9E;padding:20px 24px">
+        <div style="background:#2B8A9E;border-radius:8px;padding:12px 20px;text-align:center;margin-bottom:16px">
+          <h2 style="color:#fff;letter-spacing:8px;font-size:18px;margin:0">휴 가 신 청 서</h2>
+        </div>
         <table style="border-collapse:collapse;width:100%;font-size:13px">
           ${rows.map(([label,val])=>`<tr>
-            <td style="border:1px solid #555;padding:8px 14px;background:#e8e8e8;font-weight:600;width:90px;text-align:center;letter-spacing:2px;white-space:nowrap">${label}</td>
-            <td style="border:1px solid #555;padding:8px 14px">${val}</td>
+            <td style="border:1px solid #2B8A9E;padding:8px 14px;background:#CCE9F5;font-weight:600;width:90px;text-align:center;letter-spacing:2px;white-space:nowrap">${label}</td>
+            <td style="border:1px solid #2B8A9E;padding:8px 14px">${val}</td>
           </tr>`).join("")}
         </table>
         <p style="text-align:center;font-size:13px;font-weight:600;letter-spacing:1px;margin:16px 0 6px">위와 같이 휴가를 신청하오니 승인하여 주시기 바랍니다.</p>
         <p style="text-align:center;font-size:13px;margin:0 0 16px">${dateLine}</p>
-        <div style="display:flex;justify-content:space-between;border-top:1px solid #ccc;padding-top:6px;font-size:10px;color:#888">
+        <div style="display:flex;justify-content:space-between;border-top:1px solid #a0cfe0;padding-top:6px;font-size:10px;color:#888">
           <span>IMEC-FORM-09</span>
-          <span style="font-size:11px;color:#555;font-weight:600">Idea Mecca Industries Co., Ltd. &nbsp;(주)아이맥 인더스트리</span>
+          <span style="font-size:11px;color:#2B8A9E;font-weight:600">Idea Mecca Industries Co., Ltd. &nbsp;(주)아이맥 인더스트리</span>
           <span>Rev. 0</span>
         </div>
       </div>`;
@@ -4868,7 +4872,9 @@ tr td,tr th{border:1px solid #d0d8d5;padding:10px 14px;font-size:10pt;vertical-a
         ...(item.tripDesc ? [["출장내용", item.tripDesc]] : []),
       ];
       return `<div style="font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;color:#111;max-width:560px;border:2px solid #3a7d55;padding:20px 24px">
-        <h2 style="text-align:center;letter-spacing:8px;font-size:18px;margin:0 0 18px;border-bottom:2px solid #3a7d55;padding-bottom:12px">출 장 신 청 서</h2>
+        <div style="background:#2d6b44;border-radius:8px;padding:12px 20px;text-align:center;margin-bottom:16px">
+          <h2 style="color:#fff;letter-spacing:8px;font-size:18px;margin:0">출 장 신 청 서</h2>
+        </div>
         <table style="border-collapse:collapse;width:100%;font-size:13px">
           ${rows.map(([label,val])=>`<tr>
             <td style="border:1px solid #3a7d55;padding:8px 14px;background:#e8f5ee;font-weight:600;width:90px;text-align:center;letter-spacing:2px;white-space:nowrap">${label}</td>
